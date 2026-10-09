@@ -1,5 +1,6 @@
 # DeskCanvas
 
+测试
 Windows-only interactive desktop wallpaper workbench built with C# .NET 8 WinForms and WebView2. The app starts in the notification area without changing the desktop wallpaper. Left-click the tray icon to open the wallpaper library and navigation workbench.
 
 ## Project structure
