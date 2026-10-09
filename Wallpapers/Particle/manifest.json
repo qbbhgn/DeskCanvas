@@ -1,9 +1,21 @@
 {
   "id": "builtin-particle",
   "title": "交互粒子",
+  "author": "DeskCanvas",
+  "version": "1.0.0",
   "type": "web",
   "category": "特效壁纸",
   "tags": ["科技", "互动", "低占用"],
   "entry": "index.html",
-  "interactive": true
+  "interactive": true,
+  "recommendedFps": 60,
+  "properties": {
+    "particleCount": {
+      "type": "number",
+      "default": 150,
+      "min": 30,
+      "max": 400,
+      "step": 10
+    }
+  }
 }

@@ -70,7 +70,7 @@ internal sealed class WallpaperWindow : Form
         _manifest = manifest;
         if (IsMounted)
         {
-            NavigateToEntry();
+            await NavigateToEntryAsync();
             return;
         }
         IntPtr host;
@@ -83,7 +83,7 @@ internal sealed class WallpaperWindow : Form
         }
         // 先初始化并加载首屏，再显示窗口，避免出现黑屏闪烁。
         await EnsureCoreWebView2Async();
-        ConfigureWebView();
+        await ConfigureWebViewAsync();
         await NavigateToEntryAsync();
         if (classicLayer) ShowBehindDesktopIcons();
         else ShowAsCoverWindow();
@@ -148,7 +148,7 @@ internal sealed class WallpaperWindow : Form
         }
     }
 
-    private void ConfigureWebView()
+    private async Task ConfigureWebViewAsync()
     {
         CoreWebView2 core = _web.CoreWebView2;
         core.Settings.AreDefaultContextMenusEnabled = false;
@@ -156,6 +156,14 @@ internal sealed class WallpaperWindow : Form
         core.Settings.IsStatusBarEnabled = false;
         core.WebMessageReceived += (_, _) => { /* 网页输入桥仅供调试样例扩展使用。 */ };
         core.ProcessFailed += (_, e) => StartupLog.Write($"壁纸渲染进程异常：{e.ProcessFailedKind}");
+                await core.AddScriptToExecuteOnDocumentCreatedAsync("""
+                        (() => {
+                            const runtime = window.deskCanvas || {};
+                            runtime.version = '1';
+                            runtime.isPaused = false;
+                            window.deskCanvas = runtime;
+                        })();
+                        """);
     }
 
     /// <summary>把窗口变成桌面宿主的子窗口并对齐到显示器坐标，同时保证图标视图在其上方。</summary>
@@ -202,6 +210,7 @@ internal sealed class WallpaperWindow : Form
             core.Navigate(new Uri(entry).AbsoluteUri);
             // 页面加载完（或超时）后再显示窗口，避免先看到空白/黑屏。
             await Task.WhenAny(completion.Task, Task.Delay(4000));
+            await InitializeRuntimeAsync();
         }
         finally
         {
@@ -209,11 +218,28 @@ internal sealed class WallpaperWindow : Form
         }
     }
 
-    private void NavigateToEntry()
+    private async Task InitializeRuntimeAsync()
     {
         if (_manifest is null || _web.CoreWebView2 is null) return;
-        string entry = Path.GetFullPath(Path.Combine(_folder, _manifest.Entry));
-        _web.CoreWebView2.Navigate(new Uri(entry).AbsoluteUri);
+        string properties = JsonSerializer.Serialize(_manifest.Properties);
+        string metadata = JsonSerializer.Serialize(new
+        {
+            _manifest.Id,
+            _manifest.Title,
+            _manifest.Author,
+            _manifest.Version,
+            _manifest.Type,
+            _manifest.AudioReactive,
+            _manifest.RecommendedFps
+        });
+        string script = "(() => {" +
+            "const runtime = window.deskCanvas || (window.deskCanvas = {});" +
+            "runtime.metadata = " + metadata + ";" +
+            "runtime.properties = " + properties + ";" +
+            "window.dispatchEvent(new CustomEvent('deskcanvas:ready', { detail: runtime }));" +
+            "})();";
+        try { await _web.CoreWebView2.ExecuteScriptAsync(script); }
+        catch (Exception ex) { StartupLog.Write("壁纸运行时初始化失败", ex); }
     }
 
     public Task CloseAsync()
@@ -279,9 +305,26 @@ internal sealed class WallpaperWindow : Form
         _paused = paused;
         if (_web.CoreWebView2 is null) return;
         _web.CoreWebView2.IsMuted = paused;
-        _ = _web.CoreWebView2.ExecuteScriptAsync(paused
-            ? "document.documentElement.style.visibility='hidden'"
-            : "document.documentElement.style.visibility='visible'");
+        _ = ExecutePauseScriptAsync(paused);
+    }
+
+    private async Task ExecutePauseScriptAsync(bool paused)
+    {
+        if (_web.CoreWebView2 is null) return;
+        string state = paused ? "pause" : "resume";
+        string pausedValue = paused ? "true" : "false";
+                string script = "(() => {" +
+                        "const paused = " + pausedValue + ";" +
+                        "const runtime = window.deskCanvas || (window.deskCanvas = {});" +
+                        "runtime.isPaused = paused;" +
+                        "window.dispatchEvent(new CustomEvent('deskcanvas:" + state + "', { detail: { source: 'host' } }));" +
+                        "document.querySelectorAll('video, audio').forEach(media => {" +
+                        "if (paused) media.pause();" +
+                        "else if (media.dataset.deskCanvasAutoplay === 'true' || !media.paused) media.play().catch(() => {});" +
+                        "});" +
+                        "})();";
+        try { await _web.CoreWebView2.ExecuteScriptAsync(script); }
+        catch (Exception ex) { StartupLog.Write($"壁纸{state}协议执行失败", ex); }
     }
 
     public void ForwardMouse(int x, int y, uint message)

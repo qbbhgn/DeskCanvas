@@ -58,6 +58,8 @@
         mouse = { x: -1000, y: -1000 },
         lastSpawn = 0
       const maxParticles = 150
+      let paused = false
+      let frame = 0
       function resize() {
         dpr = Math.min(devicePixelRatio || 1, 2)
         w = innerWidth
@@ -92,6 +94,10 @@
           r: 1 + Math.random() * 1.4,
         })
       function draw() {
+        if (paused) {
+          frame = 0
+          return
+        }
         ctx.clearRect(0, 0, w, h)
         ctx.fillStyle = '#07121a'
         ctx.fillRect(0, 0, w, h)
@@ -124,6 +130,15 @@
         }
         requestAnimationFrame(draw)
       }
+      addEventListener('deskcanvas:pause', () => {
+        paused = true
+        frame = 0
+      })
+      addEventListener('deskcanvas:resume', () => {
+        if (!paused) return
+        paused = false
+        draw()
+      })
       resize()
       draw()
     </script>

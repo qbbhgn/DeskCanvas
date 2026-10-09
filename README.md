@@ -73,6 +73,32 @@ MyWallpaper/
 
 入口页面可以引用 HTML、CSS、JavaScript、Canvas、Three.js 文件、本地图片和本地 MP4 视频。壁纸包验证器会阻止 `entry` 路径跳出壁纸包目录。
 
+壁纸页面可以响应宿主运行时事件：
+
+```javascript
+let paused = false
+addEventListener('deskcanvas:pause', () => {
+  paused = true
+  // 停止 requestAnimationFrame、音频分析和其它定时器
+})
+addEventListener('deskcanvas:resume', () => {
+  paused = false
+  // 恢复渲染循环
+})
+```
+
+`window.deskCanvas.isPaused` 会同步反映当前状态。宿主暂停时还会暂停页面中的 `video` 和 `audio` 元素；自定义媒体可以设置 `data-desk-canvas-autoplay="true"`，以便恢复时继续播放。
+
+页面加载完成后会收到 `deskcanvas:ready`，并可读取当前壁纸信息和清单属性：
+
+```javascript
+addEventListener('deskcanvas:ready', (event) => {
+  const { metadata, properties } = event.detail
+  const particleCount = properties.particleCount?.default ?? 150
+  console.log(metadata.title, particleCount)
+})
+```
+
 ## 已知问题和注意事项
 
 - WebView2 Runtime 是运行本程序的机器前置条件。在全新安装的 Windows 10/11 系统上，请安装 Evergreen Runtime。Runtime 按架构分别安装，因此 32 位构建需要 32 位 Runtime（使用 `RuntimeIdentifier=win-x86` 的 `dotnet run` 需要自包含构建，因为系统可能只安装了 x64 .NET Desktop Runtime）。
