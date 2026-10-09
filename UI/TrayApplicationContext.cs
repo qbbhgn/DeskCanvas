@@ -11,6 +11,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly EventWaitHandle _showSettings;
     private readonly RegisteredWaitHandle _showSettingsRegistration;
     private readonly System.Windows.Forms.Timer _fullscreenTimer = new() { Interval = 1500 };
+    private readonly System.Windows.Forms.Timer _playlistTimer = new() { Interval = 15000 };
+    private bool _playlistRotationInProgress;
     private bool _pausedByFullscreen;
     public TrayApplicationContext(WallpaperManager manager, EventWaitHandle showSettings)
     {
@@ -28,14 +30,24 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _tray.DoubleClick += (_, _) => ShowSettings();
         _settings.FormClosing += (_, e) => { if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; _settings.Hide(); } };
         _fullscreenTimer.Tick += (_, _) => { _manager.EnsureVisible(); if (_manager.AutoPause) PauseIfFullscreen(); };
+        _playlistTimer.Tick += async (_, _) => await RotatePlaylistIfDueAsync();
         _showSettingsRegistration = ThreadPool.RegisterWaitForSingleObject(_showSettings, (_, _) =>
         {
             if (!_settings.IsDisposed) _settings.BeginInvoke(ShowSettings);
         }, null, Timeout.Infinite, false);
         _fullscreenTimer.Start();
+        _playlistTimer.Start();
         ShowSettings();
     }
     private void ShowSettings() { if (_settings.IsDisposed) return; _settings.Show(); _settings.WindowState = FormWindowState.Normal; _settings.Activate(); }
+    private async Task RotatePlaylistIfDueAsync()
+    {
+        if (_playlistRotationInProgress || _manager.IsPaused || !_manager.PlaylistEnabled) return;
+        _playlistRotationInProgress = true;
+        try { await _manager.RotatePlaylistAsync(); }
+        catch (Exception ex) { StartupLog.Write("澹佺焊鎾斁鍒楄〃杞崲澶辫触", ex); }
+        finally { _playlistRotationInProgress = false; }
+    }
     /// <summary>只在"全屏 / 非全屏"状态发生变化时切换壁纸，避免每 1.5 秒重复执行脚本。</summary>
     private void PauseIfFullscreen()
     {
@@ -58,10 +70,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     }
     private void Exit()
     {
-        _fullscreenTimer.Stop(); _fullscreenTimer.Dispose(); _tray.Visible = false; _tray.Dispose();
+        _fullscreenTimer.Stop(); _fullscreenTimer.Dispose(); _playlistTimer.Stop(); _playlistTimer.Dispose(); _tray.Visible = false; _tray.Dispose();
         _showSettingsRegistration.Unregister(null); _showSettings.Dispose();
         _settings.FormClosing -= (_, _) => { };
         _manager.Dispose(); _settings.Dispose(); ExitThread();
     }
-    protected override void Dispose(bool disposing) { if (disposing) { _showSettingsRegistration.Unregister(null); _showSettings.Dispose(); _manager.Dispose(); _tray.Dispose(); _fullscreenTimer.Dispose(); _settings.Dispose(); } base.Dispose(disposing); }
+    protected override void Dispose(bool disposing) { if (disposing) { _showSettingsRegistration.Unregister(null); _showSettings.Dispose(); _manager.Dispose(); _tray.Dispose(); _fullscreenTimer.Dispose(); _playlistTimer.Dispose(); _settings.Dispose(); } base.Dispose(disposing); }
 }

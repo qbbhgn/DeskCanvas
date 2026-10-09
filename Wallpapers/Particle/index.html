@@ -57,9 +57,20 @@
         particles = [],
         mouse = { x: -1000, y: -1000 },
         lastSpawn = 0
-      const maxParticles = 150
+      let maxParticles = 150
+      let audioLevel = 0
       let paused = false
       let frame = 0
+      addEventListener('deskcanvas:ready', (event) => {
+        const runtime = event.detail
+        maxParticles = Number(runtime.settings?.particleCount ?? runtime.properties?.particleCount?.default ?? 150)
+      })
+      addEventListener('deskcanvas:property-changed', (event) => {
+        if (event.detail.key === 'particleCount') maxParticles = Number(event.detail.value) || 150
+      })
+      addEventListener('deskcanvas:audio', (event) => {
+        audioLevel = Number(event.detail.rms) || 0
+      })
       function resize() {
         dpr = Math.min(devicePixelRatio || 1, 2)
         w = innerWidth
@@ -99,7 +110,7 @@
           return
         }
         ctx.clearRect(0, 0, w, h)
-        ctx.fillStyle = '#07121a'
+        ctx.fillStyle = `rgb(${7 + Math.round(audioLevel * 16)},${18 + Math.round(audioLevel * 10)},${26 + Math.round(audioLevel * 18)})`
         ctx.fillRect(0, 0, w, h)
         for (let i = particles.length - 1; i >= 0; i--) {
           let p = particles[i]

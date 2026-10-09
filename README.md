@@ -24,8 +24,9 @@ DeskCanvas/
 ## NuGet
 
 - `Microsoft.Web.WebView2` 1.0.2903.40
+- `NAudio` 2.2.1（系统回环音频和频谱响应）
 
-项目目标框架为 `net8.0-windows`，运行时为 `win-x86`，并已启用自包含和单文件发布。目标机器仍需安装 Evergreen WebView2 Runtime；自包含 .NET 不会打包浏览器运行时。应用架构必须与已安装的 WebView2 Runtime 架构一致。
+项目目标框架为 `net8.0-windows`，运行时为 `win-x64`，并已启用自包含和单文件发布。目标机器仍需安装 Evergreen WebView2 Runtime；自包含 .NET 不会打包浏览器运行时。应用架构必须与已安装的 WebView2 Runtime 架构一致。
 
 ## 构建和运行
 
@@ -38,7 +39,7 @@ dotnet run -c Release
 发布单个可执行文件：
 
 ```powershell
-dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish
 .\publish\DeskCanvas.exe
 ```
 
@@ -99,9 +100,36 @@ addEventListener('deskcanvas:ready', (event) => {
 })
 ```
 
+运行时还会提供当前实例的屏幕和配置状态：
+
+```javascript
+const runtime = window.deskCanvas
+console.log(runtime.metadata.monitor) // deviceName、bounds、dpi
+console.log(runtime.maxFps)            // manifest.recommendedFps
+console.log(runtime.settings)          // 用户保存的属性值
+
+addEventListener('deskcanvas:property-changed', (event) => {
+  const { key, value } = event.detail
+  // 根据用户在工作台中的设置更新场景
+})
+
+addEventListener('deskcanvas:audio', (event) => {
+  const { rms, peak, spectrum } = event.detail
+  // spectrum 是 32 个归一化频段，可用于粒子、灯光和材质动画
+})
+```
+
+工作台的“显示与性能”页面支持自动播放列表。启用后可设置 1 到 1440 分钟的轮换间隔，并在播放列表中勾选壁纸；保存空列表表示使用壁纸库中的全部有效项目。轮换只改变全局默认壁纸，已经为某个显示器设置的专属壁纸仍会保持不变。也可以使用“Rotate now”立即切换并刷新计时器。
+
+同一页面可以为每个显示器选择独立壁纸。显示器没有专属分配时使用全局默认壁纸；如果专属目录缺少有效的 `manifest.json` 或入口文件，运行时会自动回退到全局默认壁纸，并在日志中记录加载失败。
+
+壁纸资源通过 `https://wallpaper.deskcanvas/` 虚拟主机映射到壁纸包目录，HTML 中可以使用相对路径引用本地图片、字体、脚本和视频。这样切换壁纸时不会复用旧包的资源路径，也避免了 `file://` 页面常见的跨域限制。
+
+将清单中的 `audioReactive` 设置为 `true` 后，DeskCanvas 会按需打开 Windows WASAPI 系统回环捕获，并以约 30Hz 向壁纸发送 `deskcanvas:audio`。如果系统没有可用播放设备，壁纸仍会正常显示，只是不发送音频数据。
+
 ## 已知问题和注意事项
 
-- WebView2 Runtime 是运行本程序的机器前置条件。在全新安装的 Windows 10/11 系统上，请安装 Evergreen Runtime。Runtime 按架构分别安装，因此 32 位构建需要 32 位 Runtime（使用 `RuntimeIdentifier=win-x86` 的 `dotnet run` 需要自包含构建，因为系统可能只安装了 x64 .NET Desktop Runtime）。
+- WebView2 Runtime 是运行本程序的机器前置条件。在全新安装的 Windows 10/11 系统上，请安装 Evergreen Runtime。Runtime 按架构分别安装，x64 构建需要 x64 Runtime；应用使用自包含发布，因此不依赖系统安装的 .NET Desktop Runtime。
 - **两种挂载模式。** DeskCanvas 会探测经典桌面布局（顶层 `WorkerW` 位于 `SHELLDLL_DefView` 图标层之后，由文档记录的 `0x052C` Progman 消息创建）。当该图层存在时（Windows 10 和较早版本的 Windows 11），壁纸窗口会挂载在桌面图标之后，因此图标仍然可以正常使用。
 - **Windows 11 25H2 及更高版本的覆盖模式。** 这些版本只提供 `Progman → SHELLDLL_DefView → SysListView32`，没有独立的背景层；挂载在桌面层级内部的窗口不会参与合成，因此挂载的 WebView2 会保持不可见（已在版本 26200 上验证：挂载到 `Progman`、`WorkerW` 或 `SHELLDLL_DefView` 内部都没有任何渲染，而同一页面在普通窗口中可以正常显示）。因此 DeskCanvas 会退回到一个全屏无边框窗口，并将其保持在 Z 序底部（使用 `WS_EX_NOACTIVATE`，忽略 `SC_MINIMIZE`，所以显示桌面/Win+D 无法将其隐藏；托盘计时器会定期恢复该窗口）。此时壁纸可见，但**会覆盖桌面图标**。关闭壁纸（托盘 ▸ 关闭壁纸，或显示与性能 ▸ 关闭当前壁纸）即可恢复图标。工作台会在状态栏中显示提示，并在首次应用后发出一次警告。
 - 壁纸应用会按显示器尽力执行：无法承载 WebView2 窗口的显示器（虚拟显示器、无线显示器或可断开的投影仪）会被记录在状态栏和日志中，而不会导致整个应用过程终止。这类显示器的桌面坐标应为非负数。

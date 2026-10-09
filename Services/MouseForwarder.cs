@@ -15,7 +15,7 @@ internal sealed class MouseForwarder : IDisposable
         {
             var data = System.Runtime.InteropServices.Marshal.PtrToStructure<NativeMethods.MsllHookStruct>(lParam);
             uint message = unchecked((uint)wParam.ToInt64());
-            WallpaperManager.ForwardMouse(data.Pt.X, data.Pt.Y, message);
+            WallpaperManager.ForwardMouse(data.Pt.X, data.Pt.Y, message, data.MouseData);
         }
         return NativeMethods.CallNextHookEx(_hook, code, wParam, lParam);
     }

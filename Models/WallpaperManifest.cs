@@ -26,17 +26,24 @@ public sealed class WallpaperManifest
         var value = JsonSerializer.Deserialize<WallpaperManifest>(File.ReadAllText(path), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new InvalidDataException("manifest.json 内容无效");
         if (string.IsNullOrWhiteSpace(value.Entry)) throw new InvalidDataException("manifest.json 的 Entry 不能为空");
-        string full = Path.GetFullPath(Path.Combine(folder, value.Entry));
-        if (!full.StartsWith(Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Entry 不能引用壁纸目录之外的文件");
+        string root = Path.GetFullPath(folder);
+        string full = Path.GetFullPath(Path.Combine(root, value.Entry));
+        if (!IsInside(root, full)) throw new InvalidDataException("Entry 不能引用壁纸目录之外的文件");
         if (!File.Exists(full)) throw new FileNotFoundException("找不到壁纸入口文件", full);
         if (value.RecommendedFps is < 1 or > 240) throw new InvalidDataException("RecommendedFps 必须在 1 到 240 之间");
         if (!string.IsNullOrWhiteSpace(value.Preview))
         {
-            string preview = Path.GetFullPath(Path.Combine(folder, value.Preview));
-            if (!preview.StartsWith(Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Preview 不能引用壁纸目录之外的文件");
+            string preview = Path.GetFullPath(Path.Combine(root, value.Preview));
+            if (!IsInside(root, preview)) throw new InvalidDataException("Preview 不能引用壁纸目录之外的文件");
             if (!File.Exists(preview)) throw new FileNotFoundException("找不到壁纸预览图", preview);
         }
         return value;
+    }
+
+    private static bool IsInside(string root, string candidate)
+    {
+        string relative = Path.GetRelativePath(root, candidate);
+        return relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) && !Path.IsPathRooted(relative);
     }
 }
 

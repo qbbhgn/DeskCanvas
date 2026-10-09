@@ -8,6 +8,7 @@
   "tags": ["科技", "互动", "低占用"],
   "entry": "index.html",
   "interactive": true,
+  "audioReactive": true,
   "recommendedFps": 60,
   "properties": {
     "particleCount": {
