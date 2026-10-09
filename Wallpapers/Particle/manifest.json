@@ -1,0 +1,9 @@
+{
+  "id": "builtin-particle",
+  "title": "交互粒子",
+  "type": "web",
+  "category": "特效壁纸",
+  "tags": ["科技", "互动", "低占用"],
+  "entry": "index.html",
+  "interactive": true
+}

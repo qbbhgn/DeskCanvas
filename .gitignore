@@ -1,0 +1,19 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Publish output
+[Pp]ublish/
+[Pp]ublish-*/
+
+# Visual Studio and user-local files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Diagnostics and temporary files
+*.log
+*.tmp
+*.temp

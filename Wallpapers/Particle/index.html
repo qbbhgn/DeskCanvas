@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DeskCanvas Particle</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #07121a;
+        color: #d8f5ee;
+        font-family:
+          Segoe UI,
+          sans-serif;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .label {
+        position: fixed;
+        left: 34px;
+        top: 30px;
+        font-size: 14px;
+        letter-spacing: 2px;
+        color: #8caea8;
+        pointer-events: none;
+      }
+      .label b {
+        display: block;
+        margin-top: 9px;
+        font-size: 25px;
+        font-weight: 400;
+        color: #e3fff4;
+        letter-spacing: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div class="label">
+      DESKCANVAS
+      <b>Drift / 01</b>
+    </div>
+    <script>
+      // 轻量 Canvas 粒子：绘制在屏幕像素坐标，鼠标位置由宿主注入的 DOM 事件更新。
+      const canvas = document.getElementById('c'),
+        ctx = canvas.getContext('2d')
+      let w = 0,
+        h = 0,
+        dpr = 1,
+        particles = [],
+        mouse = { x: -1000, y: -1000 },
+        lastSpawn = 0
+      const maxParticles = 150
+      function resize() {
+        dpr = Math.min(devicePixelRatio || 1, 2)
+        w = innerWidth
+        h = innerHeight
+        canvas.width = w * dpr
+        canvas.height = h * dpr
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      addEventListener('resize', resize)
+      addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX
+        mouse.y = e.clientY
+        if (e.timeStamp - lastSpawn < 45) return
+        lastSpawn = e.timeStamp
+        for (let i = 0; i < 2 && particles.length < maxParticles; i++)
+          particles.push({
+            x: mouse.x,
+            y: mouse.y,
+            vx: (Math.random() - 0.5) * 2.2,
+            vy: (Math.random() - 0.5) * 2.2,
+            life: 1,
+            r: 1 + Math.random() * 2,
+          })
+      })
+      for (let i = 0; i < 90; i++)
+        particles.push({
+          x: Math.random() * innerWidth,
+          y: Math.random() * innerHeight,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
+          life: 1,
+          r: 1 + Math.random() * 1.4,
+        })
+      function draw() {
+        ctx.clearRect(0, 0, w, h)
+        ctx.fillStyle = '#07121a'
+        ctx.fillRect(0, 0, w, h)
+        for (let i = particles.length - 1; i >= 0; i--) {
+          let p = particles[i]
+          p.x += p.vx
+          p.y += p.vy
+          p.life -= 0.006
+          if (p.life <= 0) {
+            particles.splice(i, 1)
+            continue
+          }
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(91,224,190,${p.life * 0.75})`
+          ctx.fill()
+          for (let j = i + 1; j < Math.min(particles.length, i + 32); j++) {
+            let q = particles[j],
+              dx = p.x - q.x,
+              dy = p.y - q.y,
+              dist = Math.hypot(dx, dy)
+            if (dist < 76) {
+              ctx.strokeStyle = `rgba(86,179,169,${(1 - dist / 76) * 0.16})`
+              ctx.beginPath()
+              ctx.moveTo(p.x, p.y)
+              ctx.lineTo(q.x, q.y)
+              ctx.stroke()
+            }
+          }
+        }
+        requestAnimationFrame(draw)
+      }
+      resize()
+      draw()
+    </script>
+  </body>
+</html>
