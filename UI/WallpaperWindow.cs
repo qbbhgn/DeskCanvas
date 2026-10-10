@@ -474,12 +474,10 @@ internal sealed class WallpaperWindow : Form
         if (!ScreenBounds.Contains(x, y)) return;
         int localX = x - ScreenBounds.Left;
         int localY = y - ScreenBounds.Top;
-        int cssWidth = Math.Max(1, _web.ClientSize.Width);
-        int cssHeight = Math.Max(1, _web.ClientSize.Height);
         int localWidth = Math.Max(1, ScreenBounds.Width);
         int localHeight = Math.Max(1, ScreenBounds.Height);
-        int clientX = (int)Math.Round((double)localX * cssWidth / localWidth);
-        int clientY = (int)Math.Round((double)localY * cssHeight / localHeight);
+        double xRatio = (double)localX / localWidth;
+        double yRatio = (double)localY / localHeight;
         string type = message switch
         {
             NativeMethods.WmMouseMove => "mousemove",
@@ -492,7 +490,7 @@ internal sealed class WallpaperWindow : Form
         int button = message is NativeMethods.WmRButtonDown or NativeMethods.WmRButtonUp ? 2 : message is NativeMethods.WmMButtonDown or NativeMethods.WmMButtonUp ? 1 : 0;
         int deltaY = message == NativeMethods.WmMouseWheel ? (short)((mouseData >> 16) & 0xffff) : 0;
         string eventConstructor = message == NativeMethods.WmMouseWheel ? "WheelEvent" : "MouseEvent";
-        string options = $"{{clientX:{clientX},clientY:{clientY},bubbles:true,button:{button},deltaY:{deltaY}}}";
+        string options = $"{{clientX:window.innerWidth*{xRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},clientY:window.innerHeight*{yRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},bubbles:true,button:{button},deltaY:{deltaY}}}";
         string script = $"window.dispatchEvent(new {eventConstructor}({JsonSerializer.Serialize(type)},{options}))";
         _ = _web.CoreWebView2.ExecuteScriptAsync(script);
     }
