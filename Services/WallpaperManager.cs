@@ -350,7 +350,15 @@ internal sealed class WallpaperManager : IDisposable
         string fullFolder = Path.GetFullPath(folder);
         WallpaperManifest manifest = WallpaperManifest.Load(fullFolder);
 
-        CloseWallpapers();
+        foreach (string device in _windows
+                     .Where(item => string.Equals(item.Value.WallpaperFolder, fullFolder, StringComparison.OrdinalIgnoreCase))
+                     .Select(item => item.Key).ToList())
+        {
+            _ = _windows[device].CloseAsync();
+            _windows.Remove(device);
+        }
+        UsesCoverWindow = _windows.Values.Any(window => window.UsesCoverWindow);
+        UpdateAudioCapture();
         if (string.Equals(CurrentFolder, fullFolder, StringComparison.OrdinalIgnoreCase)) CurrentFolder = null;
         if (string.Equals(_settings.Current.LastWallpaperFolder, fullFolder, StringComparison.OrdinalIgnoreCase)) _settings.Current.LastWallpaperFolder = null;
         foreach (string device in _settings.Current.WallpaperAssignments

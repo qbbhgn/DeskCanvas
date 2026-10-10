@@ -169,9 +169,19 @@ internal sealed partial class SettingsForm : Form
     private void LayoutWallpaperCards()
     {
         if (_cards is null) return;
-        int width = Math.Max(U(290), (_cards.ClientSize.Width - U(24) - SystemInformation.VerticalScrollBarWidth) / 2);
-        int height = Math.Max(U(420), _cards.ClientSize.Height - U(52)), index = 0;
-        foreach (SurfacePanel card in _cards.Controls.OfType<SurfacePanel>()) { card.Size = new Size(width, height); card.Margin = new Padding(0, 0, index++ % 2 == 0 ? U(24) : 0, U(18)); }
+        int width = U(410), height = U(460);
+        var cards = _cards.Controls.OfType<SurfacePanel>().ToList();
+        foreach (SurfacePanel card in cards)
+        {
+            card.Size = new Size(width, height);
+            card.Margin = new Padding(0, 0, U(24), U(18));
+        }
+
+        int columns = Math.Max(1, (_cards.ClientSize.Width - _cards.Padding.Horizontal) / (width + U(24)));
+        int rows = (cards.Count + columns - 1) / columns;
+        _cards.AutoScrollMinSize = rows == 0
+            ? Size.Empty
+            : new Size(width + U(24), _cards.Padding.Vertical + rows * (height + U(18)));
     }
     private Control CreateWallpaperCard(string folder, WallpaperManifest manifest)
     {
