@@ -277,7 +277,36 @@ internal sealed class WallpaperManager : IDisposable
         }
     }
 
-    public void ImportFolder(string folder) => LoadSelection(folder);
+    public void ImportFolder(string folder)
+    {
+        string source = Path.GetFullPath(folder);
+        _ = WallpaperManifest.Load(source);
+        string libraryRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "DeskCanvas", "Imported");
+        Directory.CreateDirectory(libraryRoot);
+        string name = Path.GetFileName(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        string target = Path.Combine(libraryRoot, name);
+        if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+        {
+            LoadSelection(source);
+            return;
+        }
+        if (Directory.Exists(target)) target = Path.Combine(libraryRoot, $"{name}-{Guid.NewGuid():N}");
+        CopyDirectory(source, target);
+        LoadSelection(target);
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(source, file);
+            string destination = Path.Combine(target, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(file, destination);
+        }
+    }
+
     public string ImportFile(string file)
     {
         string extension = Path.GetExtension(file).ToLowerInvariant();
@@ -300,6 +329,42 @@ internal sealed class WallpaperManager : IDisposable
         File.WriteAllText(Path.Combine(root, "manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
         return root;
     }
+
+    public bool CanDelete(string folder)
+    {
+        try
+        {
+            string root = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "DeskCanvas"));
+            string candidate = Path.GetFullPath(folder);
+            return Directory.Exists(candidate) && IsPathInside(root, candidate);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public void DeleteWallpaper(string folder)
+    {
+        if (!CanDelete(folder)) throw new InvalidOperationException("内置壁纸不可删除，只能删除用户导入或创建的壁纸。");
+        string fullFolder = Path.GetFullPath(folder);
+        WallpaperManifest manifest = WallpaperManifest.Load(fullFolder);
+
+        CloseWallpapers();
+        if (string.Equals(CurrentFolder, fullFolder, StringComparison.OrdinalIgnoreCase)) CurrentFolder = null;
+        if (string.Equals(_settings.Current.LastWallpaperFolder, fullFolder, StringComparison.OrdinalIgnoreCase)) _settings.Current.LastWallpaperFolder = null;
+        foreach (string device in _settings.Current.WallpaperAssignments
+                     .Where(item => string.Equals(item.Value, fullFolder, StringComparison.OrdinalIgnoreCase))
+                     .Select(item => item.Key).ToList())
+            _settings.Current.WallpaperAssignments.Remove(device);
+        _settings.Current.PlaylistFolders.RemoveAll(item => string.Equals(item, fullFolder, StringComparison.OrdinalIgnoreCase));
+        _settings.Current.PlaylistIndex = -1;
+        _settings.Current.WallpaperProperties.Remove(manifest.Id);
+        _settings.Save();
+
+        Directory.Delete(fullFolder, true);
+    }
+
     public IReadOnlyList<(string Folder, WallpaperManifest Manifest)> DiscoverLibrary()
     {
         var roots = new[]

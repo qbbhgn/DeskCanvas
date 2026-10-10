@@ -15,11 +15,23 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" GeneratePathProperty="true" ExcludeAssets="build;buildTransitive" />
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Wallpapers\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.Web.WebView2.Core">
+      <HintPath>$(NuGetPackageRoot)microsoft.web.webview2\1.0.4258.31\lib_manual\netcoreapp3.0\Microsoft.Web.WebView2.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.WinForms">
+      <HintPath>$(NuGetPackageRoot)microsoft.web.webview2\1.0.4258.31\lib_manual\netcoreapp3.0\Microsoft.Web.WebView2.WinForms.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>

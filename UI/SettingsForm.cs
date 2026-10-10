@@ -194,14 +194,32 @@ internal sealed partial class SettingsForm : Form
         var category = TextLabel($"{manifest.Category}  ·  {manifest.Type}", 25, color: Color.FromArgb(45, 124, 126));
         var tags = TextLabel(manifest.Tags.Count == 0 ? "暂无标签" : string.Join("   ", manifest.Tags.Select(tag => $"#{tag}")), 24, color: Color.FromArgb(64, 84, 92));
         var apply = Button("应用到桌面"); apply.Click += async (_, _) => await RunActionAsync(async () => { _manager.LoadSelection(folder); await _manager.ApplyToAll(); RefreshRuntimeState(); WarnIfCoverModeHidesIcons(); });
-        card.Controls.AddRange(new Control[] { preview, title, category, tags, apply });
+        var controls = new List<Control> { preview, title, category, tags, apply };
+        if (_manager.CanDelete(folder))
+        {
+            var delete = Button("删除", () => DeleteWallpaper(folder), danger: true);
+            controls.Add(delete);
+            delete.Tag = apply;
+        }
+        card.Controls.AddRange(controls.ToArray());
         void Arrange()
         {
             int inset = U(16), inner = card.Width - U(36), previewHeight = Math.Min(U(180), (int)(inner / 2.25f));
             preview.SetBounds(inset, inset, inner, previewHeight); title.SetBounds(inset + U(10), preview.Bottom + U(10), inner - U(10), U(48));
-            category.SetBounds(inset + U(10), title.Bottom, inner - U(10), U(38)); tags.SetBounds(inset + U(10), category.Bottom, inner - U(10), U(36)); apply.SetBounds(inset, card.Height - U(68), inner, U(48));
+            category.SetBounds(inset + U(10), title.Bottom, inner - U(10), U(38)); tags.SetBounds(inset + U(10), category.Bottom, inner - U(10), U(36));
+            var delete = controls.OfType<PrototypeButton>().FirstOrDefault(item => item.Text == "删除");
+            if (delete is null) apply.SetBounds(inset, card.Height - U(68), inner, U(48));
+            else { int buttonWidth = (inner - U(10)) / 2; apply.SetBounds(inset, card.Height - U(68), buttonWidth, U(48)); delete.SetBounds(inset + buttonWidth + U(10), card.Height - U(68), buttonWidth, U(48)); }
         }
         card.Resize += (_, _) => Arrange(); Arrange(); return card;
+    }
+
+    private void DeleteWallpaper(string folder)
+    {
+        string title = Path.GetFileName(folder);
+        try { title = WallpaperManifest.Load(folder).Title; } catch { }
+        if (MessageBox.Show(this, $"确定删除壁纸“{title}”吗？\n此操作会删除壁纸文件，且无法撤销。", "删除壁纸", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+        RunAction(() => { _manager.DeleteWallpaper(folder); ShowLibrary(); });
     }
     private void ShowImport()
     {
