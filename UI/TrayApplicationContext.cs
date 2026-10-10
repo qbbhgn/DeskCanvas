@@ -22,7 +22,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.Add("打开设置", null, (_, _) => ShowSettings());
         menu.Items.Add("暂停/恢复壁纸", null, (_, _) => _manager.Pause(!_manager.IsPaused));
-        menu.Items.Add("关闭壁纸", null, (_, _) => _manager.CloseWallpapers());
+        menu.Items.Add("关闭壁纸", null, (_, _) => { _manager.CloseWallpapers(); _settings.RefreshRuntimeState(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("退出程序", null, (_, _) => Exit());
         _tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "DeskCanvas 交互式壁纸", ContextMenuStrip = menu, Visible = true };
@@ -44,7 +44,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (_playlistRotationInProgress || _manager.IsPaused || !_manager.PlaylistEnabled) return;
         _playlistRotationInProgress = true;
-        try { await _manager.RotatePlaylistAsync(); }
+        try { if (await _manager.RotatePlaylistAsync()) _settings.RefreshRuntimeState(); }
         catch (Exception ex) { StartupLog.Write("澹佺焊鎾斁鍒楄〃杞崲澶辫触", ex); }
         finally { _playlistRotationInProgress = false; }
     }

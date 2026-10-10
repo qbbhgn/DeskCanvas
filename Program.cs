@@ -19,7 +19,6 @@ internal static class Program
                 return;
             }
             ApplicationConfiguration.Initialize();
-            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.ThreadException += (_, e) => ShowFatalError(e.Exception);
             AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("未处理的 AppDomain 异常", e.ExceptionObject as Exception);
             var manager = new WallpaperManager();

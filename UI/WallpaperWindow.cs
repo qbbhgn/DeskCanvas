@@ -30,6 +30,7 @@ internal sealed class WallpaperWindow : Form
     public static List<WallpaperWindow> Instances { get; } = new();
     public Rectangle ScreenBounds { get; }
     public string ScreenDeviceName { get; }
+    public string WallpaperFolder => _folder;
 
     /// <summary>窗口已挂接到桌面层级且 WebView2 可用；为 false 时应在下次应用时重建窗口。</summary>
     public bool IsMounted => _mounted && !_closing && !IsDisposed && _web.CoreWebView2 is not null;

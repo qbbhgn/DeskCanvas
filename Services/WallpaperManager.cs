@@ -26,6 +26,8 @@ internal sealed class WallpaperManager : IDisposable
     public bool IsPaused { get; private set; }
     public IReadOnlyList<Screen> Screens => Screen.AllScreens;
     public string? CurrentFolder { get; private set; }
+    public IReadOnlyList<string> RunningWallpaperFolders => _windows.Values
+        .Select(window => window.WallpaperFolder).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     public IReadOnlyList<(string Folder, WallpaperManifest Manifest)> Library => DiscoverLibrary();
 
     /// <summary>Whether the global wallpaper should advance through the configured playlist.</summary>
