@@ -151,6 +151,9 @@ internal sealed class ToggleSwitch : CheckBox
 internal sealed class PreviewPanel : Control
 {
     internal Image? Preview { get; set; }
+    internal string? Caption { get; set; }
+    internal bool FillPreview { get; set; }
+    internal bool Selected { get; set; }
     internal string Placeholder { get; set; } = "NO PREVIEW";
     internal PreviewPanel()
     {
@@ -169,12 +172,25 @@ internal sealed class PreviewPanel : Control
         e.Graphics.Clear(Color.FromArgb(25, 39, 47));
         if (Preview is not null)
         {
-            float ratio = Math.Min((float)Width / Preview.Width, (float)Height / Preview.Height);
+            float ratio = FillPreview ? Math.Max((float)Width / Preview.Width, (float)Height / Preview.Height) : Math.Min((float)Width / Preview.Width, (float)Height / Preview.Height);
             var target = new RectangleF((Width - Preview.Width * ratio) / 2, (Height - Preview.Height * ratio) / 2, Preview.Width * ratio, Preview.Height * ratio);
             e.Graphics.DrawImage(Preview, target);
         }
         else TextRenderer.DrawText(e.Graphics, Placeholder, Font, bounds, Color.FromArgb(231, 235, 238), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        if (!string.IsNullOrEmpty(Caption))
+        {
+            int height = (int)(34 * DeviceDpi / 96f);
+            var captionBounds = new Rectangle(0, Height - height, Width, height);
+            using var shade = new SolidBrush(Color.FromArgb(175, 0, 0, 0));
+            e.Graphics.FillRectangle(shade, captionBounds);
+            TextRenderer.DrawText(e.Graphics, Caption, Font, Rectangle.Inflate(captionBounds, -8, 0), Color.White, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+        }
         e.Graphics.ResetClip();
+        if (Selected || (Focused && ShowFocusCues))
+        {
+            using var border = new Pen(Color.FromArgb(83, 174, 231), 3 * DeviceDpi / 96f);
+            e.Graphics.DrawRectangle(border, Rectangle.Inflate(bounds, -2, -2));
+        }
     }
     protected override void Dispose(bool disposing) { if (disposing) Preview?.Dispose(); base.Dispose(disposing); }
 }

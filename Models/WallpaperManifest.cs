@@ -8,6 +8,7 @@ public sealed class WallpaperManifest
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Title { get; set; } = "未命名壁纸";
     public string Author { get; set; } = "未知作者";
+    public string Description { get; set; } = "";
     public string Version { get; set; } = "1.0.0";
     public string Type { get; set; } = "web";
     public string Category { get; set; } = "特效壁纸";
