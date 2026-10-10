@@ -36,6 +36,7 @@ internal sealed partial class SettingsForm : Form
         AutoScaleDimensions = new SizeF(DeviceDpi, DeviceDpi);
         FormBorderStyle = FormBorderStyle.None;
         Text = "DeskCanvas · 壁纸工作台";
+        Icon = Program.AppIcon;
         ClientSize = new Size(U(1600), U(960));
         MinimumSize = new Size(U(1100), U(720));
         Padding = new Padding(U(6));

@@ -25,7 +25,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add("关闭壁纸", null, (_, _) => { _manager.CloseWallpapers(); _settings.RefreshRuntimeState(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("退出程序", null, (_, _) => Exit());
-        _tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "DeskCanvas 交互式壁纸", ContextMenuStrip = menu, Visible = true };
+        _tray = new NotifyIcon { Icon = Program.AppIcon, Text = "DeskCanvas 交互式壁纸", ContextMenuStrip = menu, Visible = true };
         _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowSettings(); };
         _tray.DoubleClick += (_, _) => ShowSettings();
         _settings.FormClosing += (_, e) => { if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; _settings.Hide(); } };

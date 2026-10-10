@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\DeskCanvas.ico</ApplicationIcon>
     <AssemblyName>DeskCanvas</AssemblyName>
     <RootNamespace>DeskCanvas</RootNamespace>
     <PublishSingleFile>true</PublishSingleFile>
@@ -16,6 +17,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\DeskCanvas.ico" />
     <Using Include="System.IO" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" GeneratePathProperty="true" ExcludeAssets="build;buildTransitive" />
     <PackageReference Include="NAudio" Version="2.2.1" />

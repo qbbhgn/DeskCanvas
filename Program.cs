@@ -5,6 +5,8 @@ namespace DeskCanvas;
 
 internal static class Program
 {
+    internal static Icon AppIcon { get; private set; } = null!;
+
     // 单实例保证不会重复创建多套桌面窗口和全局鼠标钩子。
     [STAThread]
     private static void Main()
@@ -19,6 +21,10 @@ internal static class Program
                 return;
             }
             ApplicationConfiguration.Initialize();
+            using var iconStream = typeof(Program).Assembly.GetManifestResourceStream("DeskCanvas.Assets.DeskCanvas.ico")
+                ?? throw new InvalidOperationException("Application icon resource is missing.");
+            using var icon = new Icon(iconStream);
+            AppIcon = icon;
             Application.ThreadException += (_, e) => ShowFatalError(e.Exception);
             AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("未处理的 AppDomain 异常", e.ExceptionObject as Exception);
             var manager = new WallpaperManager();
