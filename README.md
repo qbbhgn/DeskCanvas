@@ -65,7 +65,7 @@ MyWallpaper/
   "id": "my-wallpaper",
   "title": "My Wallpaper",
   "type": "web",
-  "category": "可交互壁纸",
+  "category": "特效壁纸",
   "tags": ["科技", "互动"],
   "entry": "index.html",
   "interactive": true
@@ -73,6 +73,8 @@ MyWallpaper/
 ```
 
 入口页面可以引用 HTML、CSS、JavaScript、Canvas、Three.js 文件、本地图片和本地 MP4 视频。壁纸包验证器会阻止 `entry` 路径跳出壁纸包目录。
+
+壁纸库会保留 `category` 自定义分类，并自动补充以下分类：`静态图片`、`动态图片`、`图片壁纸`、`静态壁纸`、`动态壁纸`、`可交互壁纸`、`音频响应`、`视频壁纸` 和 `网页壁纸`。图片会根据实际文件判断是否为多帧动画：GIF 会检查帧数，APNG 和动态 WebP 会检查动画标记；动态图片同时归入 `动态图片` 和 `动态壁纸`。视频和网页内容也归入 `动态壁纸`，清单中的 `interactive` 和 `audioReactive` 会分别决定对应能力分类。
 
 壁纸页面可以响应宿主运行时事件：
 
@@ -105,8 +107,8 @@ addEventListener('deskcanvas:ready', (event) => {
 ```javascript
 const runtime = window.deskCanvas
 console.log(runtime.metadata.monitor) // deviceName、bounds、dpi
-console.log(runtime.maxFps)            // manifest.recommendedFps
-console.log(runtime.settings)          // 用户保存的属性值
+console.log(runtime.maxFps) // manifest.recommendedFps
+console.log(runtime.settings) // 用户保存的属性值
 
 addEventListener('deskcanvas:property-changed', (event) => {
   const { key, value } = event.detail

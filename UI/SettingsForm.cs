@@ -163,7 +163,7 @@ internal sealed partial class SettingsForm : Form
         frame.Controls.Add(_librarySearch);
         _libraryCategory = new PrototypeComboBox { Font = Face(16), ForeColor = PrototypeTheme.Ink };
         _libraryCategory.Items.Add("全部分类");
-        foreach (string category in _libraryItems.Select(item => item.Manifest.Category).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.CurrentCultureIgnoreCase).OrderBy(value => value)) _libraryCategory.Items.Add(category);
+        foreach (string category in _libraryItems.SelectMany(item => item.Manifest.GetCategories(item.Folder)).Distinct(StringComparer.CurrentCultureIgnoreCase).OrderBy(value => value)) _libraryCategory.Items.Add(category);
         _libraryCategory.SelectedIndex = 0;
         _libraryCount = TextLabel("", 14, color: Color.Silver); _libraryCount.BackColor = LibraryBackground; _libraryCount.TextAlign = ContentAlignment.MiddleRight;
         toolbar.Controls.AddRange(new Control[] { heading, frame, _libraryCategory, _libraryCount });
@@ -184,8 +184,8 @@ internal sealed partial class SettingsForm : Form
         if (_cards is null || _librarySearch is null || _libraryCategory is null) return;
         _cards.SuspendLayout(); foreach (Control child in _cards.Controls.Cast<Control>().ToArray()) child.Dispose(); _cards.Controls.Clear();
         string query = _librarySearch.Text.Trim(), category = _libraryCategory.SelectedItem?.ToString() ?? "全部分类";
-        var filtered = _libraryItems.Where(item => (category == "全部分类" || string.Equals(item.Manifest.Category, category, StringComparison.CurrentCultureIgnoreCase)) &&
-            (query.Length == 0 || string.Join("\n", item.Manifest.Title, item.Manifest.Author, item.Manifest.Category, string.Join(' ', item.Manifest.Tags)).Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+        var filtered = _libraryItems.Where(item => (category == "全部分类" || item.Manifest.GetCategories(item.Folder).Contains(category, StringComparer.CurrentCultureIgnoreCase)) &&
+            (query.Length == 0 || string.Join("\n", item.Manifest.Title, item.Manifest.Author, string.Join(' ', item.Manifest.GetCategories(item.Folder)), string.Join(' ', item.Manifest.Tags)).Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
         foreach (var item in filtered) _cards.Controls.Add(CreateWallpaperCard(item.Folder, item.Manifest));
         if (filtered.Count == 0) _cards.Controls.Add(new Label { Text = _libraryItems.Count == 0 ? "还没有壁纸" : "没有匹配的壁纸", AutoSize = true, Font = Face(17), ForeColor = Color.Silver, Padding = new Padding(U(16)) });
         if (_libraryCount is not null) _libraryCount.Text = $"{filtered.Count} / {_libraryItems.Count}";
@@ -269,7 +269,7 @@ internal sealed partial class SettingsForm : Form
         apply.Click += async (_, _) => await RunActionAsync(async () => { _manager.LoadSelection(folder); await _manager.ApplyToAll(); RefreshRuntimeState(); WarnIfCoverModeHidesIcons(); });
         Add(apply, 48);
         Add(TextLabel("壁纸详情", 18, true, Color.White), 42);
-        Add(TextLabel($"类型：{manifest.Type}    分类：{manifest.Category}", 15, color: Color.Silver), 38);
+        Add(TextLabel($"类型：{manifest.Type}    分类：{string.Join(" / ", manifest.GetCategories(folder))}", 15, color: Color.Silver), 38);
         Add(TextLabel($"帧率：{manifest.RecommendedFps} FPS    版本：{manifest.Version}", 15, color: Color.Silver), 38);
         Add(TextLabel($"交互：{(manifest.Interactive ? "支持" : "无")}    音频响应：{(manifest.AudioReactive ? "支持" : "无")}", 15, color: Color.Silver), 38);
         var description = TextLabel(string.IsNullOrWhiteSpace(manifest.Description) ? "暂无介绍" : manifest.Description, 16, color: Color.Gainsboro);

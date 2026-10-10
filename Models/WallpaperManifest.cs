@@ -20,6 +20,96 @@ public sealed class WallpaperManifest
     public int RecommendedFps { get; set; } = 60;
     public Dictionary<string, WallpaperProperty> Properties { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>返回清单自定义分类以及可由宿主能力判断的分类。</summary>
+    public IReadOnlyList<string> GetCategories(string? folder = null)
+    {
+        var categories = new List<string>();
+        if (!IsDerivedCategory(Category)) AddCategory(categories, Category);
+
+        if (string.Equals(Type, "image", StringComparison.OrdinalIgnoreCase))
+        {
+            bool animated = !string.IsNullOrWhiteSpace(folder) && ContainsAnimatedImage(folder);
+            AddCategory(categories, animated ? "动态图片" : "静态图片");
+            AddCategory(categories, animated ? "动态壁纸" : "静态壁纸");
+            AddCategory(categories, "图片壁纸");
+        }
+        else if (string.Equals(Type, "video", StringComparison.OrdinalIgnoreCase)) AddCategory(categories, "动态壁纸");
+        else AddCategory(categories, "动态壁纸");
+
+        if (Interactive) AddCategory(categories, "可交互壁纸");
+        if (AudioReactive) AddCategory(categories, "音频响应");
+        if (string.Equals(Type, "video", StringComparison.OrdinalIgnoreCase)) AddCategory(categories, "视频壁纸");
+        if (string.Equals(Type, "web", StringComparison.OrdinalIgnoreCase)) AddCategory(categories, "网页壁纸");
+        return categories;
+    }
+
+    private static bool ContainsAnimatedImage(string folder)
+    {
+        try
+        {
+            string root = Path.GetFullPath(folder);
+            return Directory.EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly)
+                .Where(path => !string.Equals(Path.GetFileName(path), "manifest.json", StringComparison.OrdinalIgnoreCase))
+                .Where(path => !string.Equals(Path.GetFileName(path), "preview.png", StringComparison.OrdinalIgnoreCase))
+                .Where(IsImageFile)
+                .Any(IsAnimatedImageFile);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsImageFile(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() is ".gif" or ".png" or ".webp" or ".apng";
+
+    private static bool IsAnimatedImageFile(string path)
+    {
+        string extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension == ".gif")
+        {
+            try
+            {
+                using var image = System.Drawing.Image.FromFile(path);
+                return image.GetFrameCount(System.Drawing.Imaging.FrameDimension.Time) > 1;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        byte[] bytes = File.ReadAllBytes(path);
+        if (extension == ".webp") return ContainsAscii(bytes, "ANIM");
+        return extension == ".apng" || ContainsAscii(bytes, "acTL");
+    }
+
+    private static bool ContainsAscii(byte[] bytes, string value)
+    {
+        byte[] marker = System.Text.Encoding.ASCII.GetBytes(value);
+        for (int index = 0; index <= bytes.Length - marker.Length; index++)
+        {
+            if (bytes.AsSpan(index, marker.Length).SequenceEqual(marker)) return true;
+        }
+        return false;
+    }
+
+    private static void AddCategory(List<string> categories, string? category)
+    {
+        if (!string.IsNullOrWhiteSpace(category) && !categories.Contains(category, StringComparer.CurrentCultureIgnoreCase)) categories.Add(category);
+    }
+
+    private static bool IsDerivedCategory(string? category) => category is not null &&
+        (category.Equals("静态图片", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("动态图片", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("图片壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("静态壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("动态壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("视频壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("网页壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("可交互壁纸", StringComparison.CurrentCultureIgnoreCase) ||
+         category.Equals("音频响应", StringComparison.CurrentCultureIgnoreCase));
+
     public static WallpaperManifest Load(string folder)
     {
         string path = Path.Combine(folder, "manifest.json");
