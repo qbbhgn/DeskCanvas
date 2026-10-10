@@ -166,7 +166,7 @@ internal sealed class PreviewPanel : Control
     {
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+        var bounds = ClientRectangle;
         using var clip = PrototypeTheme.Round(bounds, 4 * DeviceDpi / 96f);
         e.Graphics.SetClip(clip);
         e.Graphics.Clear(Color.FromArgb(25, 39, 47));

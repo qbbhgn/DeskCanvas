@@ -215,7 +215,7 @@ internal sealed partial class SettingsForm : Form
     }
     private Control CreateWallpaperCard(string folder, WallpaperManifest manifest)
     {
-        var card = new PreviewPanel { Width = U(162), Height = U(162), Font = Face(15), Caption = manifest.Title, FillPreview = true, Cursor = Cursors.Hand, Tag = folder, TabStop = true, AccessibleName = manifest.Title, AccessibleRole = AccessibleRole.PushButton };
+        var card = new PreviewPanel { Width = U(162), Height = U(162), BackColor = LibraryBackground, Font = Face(15), Caption = manifest.Title, FillPreview = true, Cursor = Cursors.Hand, Tag = folder, TabStop = true, AccessibleName = manifest.Title, AccessibleRole = AccessibleRole.PushButton };
         LoadLibraryPreview(card, folder, manifest);
         card.Click += (_, _) => ShowWallpaperDetails(folder, manifest);
         card.KeyDown += (_, args) => { if (args.KeyCode is Keys.Enter or Keys.Space) { ShowWallpaperDetails(folder, manifest); args.Handled = true; args.SuppressKeyPress = true; } };
