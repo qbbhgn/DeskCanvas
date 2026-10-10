@@ -7,6 +7,7 @@
   "category": "特效壁纸",
   "tags": ["科技", "互动", "低占用"],
   "entry": "index.html",
+  "preview": "preview.png",
   "interactive": true,
   "audioReactive": true,
   "recommendedFps": 60,

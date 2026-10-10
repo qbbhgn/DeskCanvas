@@ -8,6 +8,7 @@
   "category": "特效壁纸",
   "tags": ["互动", "生态", "苍蝇"],
   "entry": "index.html",
+  "preview": "preview.png",
   "interactive": true,
   "desktopEnvironment": true,
   "transparent": true,
