@@ -39,7 +39,7 @@ internal sealed partial class SettingsForm : Form
         BackColor = PrototypeTheme.Canvas;
         Font = Face(22);
         DoubleBuffered = true;
-        MaximizedBounds = Screen.FromControl(this).WorkingArea;
+        UpdateMaximizedBounds();
         BuildShell(); ShowLibrary();
         Shown += (_, _) =>
         {
@@ -75,7 +75,14 @@ internal sealed partial class SettingsForm : Form
         }
         titlebar.Controls.Add(buttons); Controls.Add(titlebar);
     }
-    private void ToggleMaximize() { MaximizedBounds = Screen.FromControl(this).WorkingArea; WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized; }
+    private void UpdateMaximizedBounds()
+    {
+        Screen screen = Screen.FromControl(this);
+        Rectangle area = screen.WorkingArea;
+        area.Offset(-screen.Bounds.X, -screen.Bounds.Y);
+        MaximizedBounds = area;
+    }
+    private void ToggleMaximize() { UpdateMaximizedBounds(); WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized; }
     protected override void WndProc(ref Message message)
     {
         base.WndProc(ref message);
