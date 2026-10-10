@@ -38,6 +38,7 @@ internal sealed class WallpaperWindow : Form
     /// <summary>true 表示当前系统没有可供挂接的桌面背景层，壁纸以覆盖桌面的普通窗口运行。</summary>
     public bool UsesCoverWindow => _coverMode;
     public bool AudioReactiveEnabled => _manifest?.AudioReactive == true;
+    public bool DesktopEnvironmentEnabled => IsMounted && !_paused && _manifest?.DesktopEnvironment == true;
     public bool SupportsProperty(string key) =>
         !string.IsNullOrWhiteSpace(key) && _manifest?.Properties.ContainsKey(key) == true;
 
@@ -80,6 +81,9 @@ internal sealed class WallpaperWindow : Form
     {
         _folder = folder;
         _manifest = manifest;
+        BackColor = manifest.Transparent ? Color.Magenta : Color.Black;
+        TransparencyKey = manifest.Transparent ? Color.Magenta : Color.Empty;
+        _web.DefaultBackgroundColor = manifest.Transparent ? Color.Transparent : Color.White;
         _propertyValues = new ReadOnlyDictionary<string, JsonElement>(
             propertyValues is null
                 ? new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
@@ -490,9 +494,18 @@ internal sealed class WallpaperWindow : Form
         int button = message is NativeMethods.WmRButtonDown or NativeMethods.WmRButtonUp ? 2 : message is NativeMethods.WmMButtonDown or NativeMethods.WmMButtonUp ? 1 : 0;
         int deltaY = message == NativeMethods.WmMouseWheel ? (short)((mouseData >> 16) & 0xffff) : 0;
         string eventConstructor = message == NativeMethods.WmMouseWheel ? "WheelEvent" : "MouseEvent";
-        string options = $"{{clientX:window.innerWidth*{xRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},clientY:window.innerHeight*{yRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},bubbles:true,button:{button},deltaY:{deltaY}}}";
+        string alt = (NativeMethods.GetAsyncKeyState(0x12) < 0).ToString().ToLowerInvariant();
+        string ctrl = (NativeMethods.GetAsyncKeyState(0x11) < 0).ToString().ToLowerInvariant();
+        string options = $"{{clientX:window.innerWidth*{xRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},clientY:window.innerHeight*{yRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)},bubbles:true,button:{button},deltaY:{deltaY},altKey:{alt},ctrlKey:{ctrl}}}";
         string script = $"window.dispatchEvent(new {eventConstructor}({JsonSerializer.Serialize(type)},{options}))";
         _ = _web.CoreWebView2.ExecuteScriptAsync(script);
+    }
+
+    public void PushDesktopEnvironment(object detail)
+    {
+        if (!DesktopEnvironmentEnabled) return;
+        string json = JsonSerializer.Serialize(detail, RuntimeJson);
+        _ = ExecuteRuntimeScriptAsync($"window.dispatchEvent(new CustomEvent('deskcanvas:desktop',{{detail:{json}}}));");
     }
 
     protected override void Dispose(bool disposing)

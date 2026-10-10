@@ -16,6 +16,8 @@ public sealed class WallpaperManifest
     public string Entry { get; set; } = "index.html";
     public string? Preview { get; set; }
     public bool Interactive { get; set; } = true;
+    public bool DesktopEnvironment { get; set; }
+    public bool Transparent { get; set; }
     public bool AudioReactive { get; set; }
     public int RecommendedFps { get; set; } = 60;
     public Dictionary<string, WallpaperProperty> Properties { get; set; } = new(StringComparer.OrdinalIgnoreCase);

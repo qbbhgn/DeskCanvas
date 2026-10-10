@@ -12,6 +12,9 @@ internal static class NativeMethods
     internal const uint WmMouseMove = 0x0200, WmLButtonDown = 0x0201, WmLButtonUp = 0x0202, WmMButtonDown = 0x0207, WmMButtonUp = 0x0208, WmMouseWheel = 0x020A, WmRButtonDown = 0x0204, WmRButtonUp = 0x0205;
     internal const int WmSysCommand = 0x0112, ScMinimize = 0xF020;
     internal const int WhMouseLl = 14;
+    [DllImport("user32.dll")] internal static extern short GetAsyncKeyState(int key);
+    [DllImport("user32.dll")] internal static extern IntPtr WindowFromPoint(Point point);
+    [DllImport("user32.dll")] internal static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
     internal delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
     [StructLayout(LayoutKind.Sequential)] internal struct Point { public int X; public int Y; }
     [StructLayout(LayoutKind.Sequential)] internal struct MsllHookStruct { public Point Pt; public uint MouseData, Flags, Time; public IntPtr ExtraInfo; }
