@@ -50,6 +50,7 @@ internal sealed class DeskCanvasSettings
 {
     public bool StartupEnabled { get; set; } = true;
     public bool AutoPause { get; set; } = true;
+    public bool WallpaperAboveIcons { get; set; }
     public string? LastWallpaperFolder { get; set; }
     public Dictionary<string, string> WallpaperAssignments { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Dictionary<string, JsonElement>> WallpaperProperties { get; set; } = new(StringComparer.OrdinalIgnoreCase);

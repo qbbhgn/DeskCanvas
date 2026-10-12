@@ -270,10 +270,13 @@ internal sealed partial class SettingsForm : Form
         target.Items.Add(new WallpaperTarget(null, "所有显示器"));
         foreach (Screen screen in _manager.Screens) target.Items.Add(new WallpaperTarget(screen, screen.DeviceName));
         target.SelectedIndex = 0;
+        var layer = new PrototypeComboBox { Font = Face(17, true), ForeColor = Color.White, BackColor = Color.FromArgb(57, 59, 63), FlatStyle = FlatStyle.Flat };
+        layer.Items.AddRange(new object[] { "图标下方（默认）", "图标上方" }); layer.SelectedIndex = _manager.WallpaperAboveIcons ? 1 : 0;
         var apply = Button("应用壁纸"); apply.Font = Face(17, true); apply.FillColor = Color.FromArgb(51, 139, 193); apply.OutlineColor = Color.FromArgb(91, 177, 225);
         apply.Click += async (_, _) => await RunActionAsync(async () =>
         {
             if (target.SelectedItem is not WallpaperTarget selected) return;
+            _manager.WallpaperAboveIcons = layer.SelectedIndex == 1;
             if (selected.Screen is null)
             {
                 _manager.LoadSelection(folder);
@@ -290,15 +293,19 @@ internal sealed partial class SettingsForm : Form
             WarnIfCoverModeHidesIcons();
         });
         var targetLabel = TextLabel("应用到", 17, true, Color.FromArgb(205, 209, 214)); targetLabel.BackColor = LibrarySurface;
+        var layerLabel = TextLabel("壁纸层级", 17, true, Color.FromArgb(205, 209, 214)); layerLabel.BackColor = LibrarySurface;
         var applyRow = new Panel { BackColor = LibrarySurface };
-        applyRow.Controls.AddRange(new Control[] { targetLabel, target, apply });
+        applyRow.Controls.AddRange(new Control[] { targetLabel, target, layerLabel, layer, apply });
         applyRow.Resize += (_, _) =>
         {
-            targetLabel.SetBounds(0, U(5), U(90), U(38));
-            target.SetBounds(U(92), U(2), Math.Max(U(120), applyRow.Width - U(215)), U(42));
-            apply.SetBounds(applyRow.Width - U(110), 0, U(110), U(45));
+            int inputWidth = Math.Max(U(120), applyRow.Width - U(84));
+            targetLabel.SetBounds(0, 0, U(72), U(38));
+            target.SetBounds(U(74), 0, inputWidth, U(38));
+            layerLabel.SetBounds(0, U(43), U(82), U(38));
+            layer.SetBounds(U(84), U(43), Math.Max(U(110), applyRow.Width - U(84)), U(38));
+            apply.SetBounds(0, U(86), U(150), U(45));
         };
-        Add(applyRow, 58);
+        Add(applyRow, 138);
         Add(TextLabel("壁纸详情", 18, true, Color.White), 42);
         Add(TextLabel($"类型：{manifest.Type}    分类：{string.Join(" / ", manifest.GetCategories(folder))}", 15, color: Color.Silver), 38);
         Add(TextLabel($"帧率：{manifest.RecommendedFps} FPS    版本：{manifest.Version}", 15, color: Color.Silver), 38);

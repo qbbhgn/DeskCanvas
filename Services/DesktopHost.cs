@@ -66,4 +66,23 @@ internal static class DesktopHost
     {
         return host == IntPtr.Zero ? IntPtr.Zero : NativeMethods.FindWindowEx(host, IntPtr.Zero, IconViewClass, null);
     }
+
+    /// <summary>Finds the Explorer window that directly contains the desktop icons.</summary>
+    public static bool TryFindIconView(out IntPtr iconView)
+    {
+        IntPtr progman = NativeMethods.FindWindow("Progman", null);
+        iconView = progman == IntPtr.Zero
+            ? IntPtr.Zero
+            : NativeMethods.FindWindowEx(progman, IntPtr.Zero, IconViewClass, null);
+        if (iconView != IntPtr.Zero) return true;
+
+        IntPtr found = IntPtr.Zero;
+        NativeMethods.EnumWindows((top, _) =>
+        {
+            found = NativeMethods.FindWindowEx(top, IntPtr.Zero, IconViewClass, null);
+            return found == IntPtr.Zero;
+        }, IntPtr.Zero);
+        iconView = found;
+        return iconView != IntPtr.Zero;
+    }
 }

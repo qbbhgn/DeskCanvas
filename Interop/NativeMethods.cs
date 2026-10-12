@@ -7,7 +7,7 @@ internal static class NativeMethods
 {
     internal const int GwlStyle = -16, WsChild = 0x40000000, WsPopup = unchecked((int)0x80000000);
     internal const int WsExNoActivate = 0x08000000, SwHide = 0;
-    internal static readonly IntPtr HwndBottom = new(1);
+    internal static readonly IntPtr HwndTop = IntPtr.Zero, HwndBottom = new(1);
     internal const uint SwpNoSize = 0x0001, SwpNoMove = 0x0002, SwpNoActivate = 0x0010, SwpShowWindow = 0x0040;
     internal const uint WmMouseMove = 0x0200, WmLButtonDown = 0x0201, WmLButtonUp = 0x0202, WmMButtonDown = 0x0207, WmMButtonUp = 0x0208, WmMouseWheel = 0x020A, WmRButtonDown = 0x0204, WmRButtonUp = 0x0205;
     internal const int WmSysCommand = 0x0112, ScMinimize = 0xF020;

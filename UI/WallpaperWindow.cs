@@ -24,6 +24,7 @@ internal sealed class WallpaperWindow : Form
     private IReadOnlyDictionary<string, JsonElement> _propertyValues = new ReadOnlyDictionary<string, JsonElement>(new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase));
     private IntPtr _host;
     private bool _coverMode;
+    private bool _aboveIcons;
     private bool _paused;
     private bool _mounted;
     private bool _closing;
@@ -41,6 +42,19 @@ internal sealed class WallpaperWindow : Form
     public bool DesktopEnvironmentEnabled => IsMounted && !_paused && _manifest?.DesktopEnvironment == true;
     public bool SupportsProperty(string key) =>
         !string.IsNullOrWhiteSpace(key) && _manifest?.Properties.ContainsKey(key) == true;
+
+    public void SetDesktopLayer(bool aboveIcons)
+    {
+        _aboveIcons = aboveIcons;
+        if (!IsHandleCreated || _coverMode) return;
+        IntPtr desiredHost = aboveIcons
+            ? DesktopHost.TryFindIconView(out IntPtr iconView) ? iconView : IntPtr.Zero
+            : DesktopHost.TryFindBackLayer(out IntPtr backLayer) ? backLayer : IntPtr.Zero;
+        if (desiredHost != IntPtr.Zero && desiredHost != _host)
+            Mount(Handle, desiredHost);
+        else if (_host != IntPtr.Zero)
+            ApplyIconLayerPosition(Handle, _host, _aboveIcons);
+    }
 
     public WallpaperWindow(Screen screen)
     {
@@ -116,7 +130,7 @@ internal sealed class WallpaperWindow : Form
         IntPtr hwnd = Handle;
         Visible = true;
         // WinForms 显示窗口时会把它提到 Z 序顶端，这里重新压回图标视图下方。
-        if (_host != IntPtr.Zero) ApplyIconLayerPosition(hwnd, _host);
+        if (_host != IntPtr.Zero) ApplyIconLayerPosition(hwnd, _host, _aboveIcons);
         Invalidate(true);
         Update();
     }
@@ -202,23 +216,25 @@ internal sealed class WallpaperWindow : Form
             "runtime.__frameLimiterInstalled = true; window.deskCanvas = runtime; })();");
     }
 
-    /// <summary>把窗口变成桌面宿主的子窗口并对齐到显示器坐标，同时保证图标视图在其上方。</summary>
+    /// <summary>把窗口变成指定桌面宿主的子窗口并对齐到显示器坐标。</summary>
     private void Mount(IntPtr hwnd, IntPtr host)
     {
+        _host = host;
         long style = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlStyle).ToInt64();
         NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GwlStyle, new IntPtr((style & ~NativeMethods.WsPopup) | NativeMethods.WsChild));
         NativeMethods.SetParent(hwnd, host);
         NativeMethods.GetWindowRect(host, out var hostRect);
         // SetParent 后坐标属于宿主客户区，必须使用宿主窗口实际屏幕位置换算。
         NativeMethods.MoveWindow(hwnd, ScreenBounds.X - hostRect.Left, ScreenBounds.Y - hostRect.Top, ScreenBounds.Width, ScreenBounds.Height, false);
-        ApplyIconLayerPosition(hwnd, host);
+        ApplyIconLayerPosition(hwnd, host, _aboveIcons);
     }
 
-    /// <summary>把壁纸窗口压在桌面图标视图下方：位于桌面背景之上、桌面图标之下。</summary>
-    private static void ApplyIconLayerPosition(IntPtr hwnd, IntPtr host)
+    /// <summary>在当前宿主内设置壁纸相对图标视图的顺序。</summary>
+    private static void ApplyIconLayerPosition(IntPtr hwnd, IntPtr host, bool aboveIcons)
     {
         IntPtr iconView = DesktopHost.FindIconViewHost(host);
-        NativeMethods.SetWindowPos(hwnd, iconView != IntPtr.Zero ? iconView : NativeMethods.HwndBottom, 0, 0, 0, 0,
+        IntPtr insertAfter = aboveIcons || iconView == IntPtr.Zero ? NativeMethods.HwndTop : iconView;
+        NativeMethods.SetWindowPos(hwnd, insertAfter, 0, 0, 0, 0,
             NativeMethods.SwpNoActivate | NativeMethods.SwpNoMove | NativeMethods.SwpNoSize | NativeMethods.SwpShowWindow);
     }
 
@@ -228,7 +244,7 @@ internal sealed class WallpaperWindow : Form
         IntPtr hwnd = Handle;
         Visible = true;
         // WinForms 显示窗口时会把它提到 Z 序顶端，这里重新压回图标视图下方。
-        if (_host != IntPtr.Zero) ApplyIconLayerPosition(hwnd, _host);
+        if (_host != IntPtr.Zero) ApplyIconLayerPosition(hwnd, _host, _aboveIcons);
         Invalidate(true);
         Update();
     }

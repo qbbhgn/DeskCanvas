@@ -23,6 +23,16 @@ internal sealed class WallpaperManager : IDisposable
             _settings.Save();
         }
     }
+    public bool WallpaperAboveIcons
+    {
+        get => _settings.Current.WallpaperAboveIcons;
+        set
+        {
+            if (_settings.Current.WallpaperAboveIcons == value) return;
+            _settings.Current.WallpaperAboveIcons = value;
+            _settings.Save();
+        }
+    }
     public bool StartupEnabled
     {
         get => _settings.Current.StartupEnabled;
@@ -492,6 +502,7 @@ internal sealed class WallpaperManager : IDisposable
             if (_windows.TryGetValue(screen.DeviceName, out WallpaperWindow? reusable) && reusable.IsMounted &&
                 string.Equals(reusable.WallpaperFolder, folder, StringComparison.OrdinalIgnoreCase))
             {
+                reusable.SetDesktopLayer(WallpaperAboveIcons);
                 pending[screen.DeviceName] = reusable;
                 continue;
             }
@@ -532,6 +543,7 @@ internal sealed class WallpaperManager : IDisposable
         try
         {
             await window.StartAsync(folder, manifest, GetPropertyValues(manifest));
+            window.SetDesktopLayer(WallpaperAboveIcons);
             return window;
         }
         catch (Exception ex)
@@ -544,6 +556,7 @@ internal sealed class WallpaperManager : IDisposable
         }
         var retry = new WallpaperWindow(screen);
         await retry.StartAsync(folder, manifest, GetPropertyValues(manifest));
+        retry.SetDesktopLayer(WallpaperAboveIcons);
         return retry;
     }
     public Task ApplyToAll() => ApplyTo(Screens, replaceAll: true);
