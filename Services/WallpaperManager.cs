@@ -23,6 +23,17 @@ internal sealed class WallpaperManager : IDisposable
             _settings.Save();
         }
     }
+    public bool StartupEnabled
+    {
+        get => _settings.Current.StartupEnabled;
+        set
+        {
+            if (_settings.Current.StartupEnabled == value) return;
+            _settings.Current.StartupEnabled = value;
+            _settings.Save();
+            StartupManager.Configure(value);
+        }
+    }
     public bool IsPaused { get; private set; }
     public IReadOnlyList<Screen> Screens => Screen.AllScreens;
     public string? CurrentFolder { get; private set; }
@@ -533,6 +544,13 @@ internal sealed class WallpaperManager : IDisposable
         foreach (var window in _windows.Values) _ = window.CloseAsync();
         _windows.Clear();
         UpdateAudioCapture();
+    }
+
+    public void MarkManualExit()
+    {
+        _settings.Current.StartupEnabled = false;
+        _settings.Save();
+        StartupManager.Disable();
     }
 
     private void UpdateAudioCapture()

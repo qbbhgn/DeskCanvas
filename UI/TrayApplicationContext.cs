@@ -14,10 +14,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly System.Windows.Forms.Timer _playlistTimer = new() { Interval = 15000 };
     private bool _playlistRotationInProgress;
     private bool _pausedByFullscreen;
-    public TrayApplicationContext(WallpaperManager manager, EventWaitHandle showSettings)
+    private readonly bool _startupInvocation;
+    public TrayApplicationContext(WallpaperManager manager, EventWaitHandle showSettings, bool startupInvocation)
     {
         _manager = manager;
         _showSettings = showSettings;
+        _startupInvocation = startupInvocation;
         _settings = new SettingsForm(manager);
         var menu = new ContextMenuStrip();
         menu.Items.Add("打开设置", null, (_, _) => ShowSettings());
@@ -38,6 +40,19 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _fullscreenTimer.Start();
         _playlistTimer.Start();
         ShowSettings();
+        if (_startupInvocation && _manager.StartupEnabled) _ = RestoreWallpaperAsync();
+    }
+    private async Task RestoreWallpaperAsync()
+    {
+        try
+        {
+            await _manager.ApplyToAll();
+            _settings.RefreshRuntimeState();
+        }
+        catch (Exception ex)
+        {
+            StartupLog.Write("启动时恢复壁纸失败", ex);
+        }
     }
     private void ShowSettings() { if (_settings.IsDisposed) return; _settings.Show(); _settings.WindowState = FormWindowState.Normal; _settings.Activate(); }
     private async Task RotatePlaylistIfDueAsync()
@@ -70,6 +85,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     }
     private void Exit()
     {
+        _manager.MarkManualExit();
         _fullscreenTimer.Stop(); _fullscreenTimer.Dispose(); _playlistTimer.Stop(); _playlistTimer.Dispose(); _tray.Visible = false; _tray.Dispose();
         _showSettingsRegistration.Unregister(null); _showSettings.Dispose();
         _settings.FormClosing -= (_, _) => { };

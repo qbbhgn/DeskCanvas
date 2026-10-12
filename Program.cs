@@ -11,6 +11,8 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        bool startupInvocation = Environment.GetCommandLineArgs()
+            .Any(argument => string.Equals(argument, "--startup", StringComparison.OrdinalIgnoreCase));
         using var showSettings = new EventWaitHandle(false, EventResetMode.AutoReset, "DeskCanvas.ShowSettings", out bool createdEvent);
         try
         {
@@ -28,7 +30,8 @@ internal static class Program
             Application.ThreadException += (_, e) => ShowFatalError(e.Exception);
             AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("未处理的 AppDomain 异常", e.ExceptionObject as Exception);
             var manager = new WallpaperManager();
-            var app = new TrayApplicationContext(manager, showSettings);
+            StartupManager.Configure(manager.StartupEnabled);
+            var app = new TrayApplicationContext(manager, showSettings, startupInvocation);
             Application.Run(app);
         }
         catch (Exception ex)

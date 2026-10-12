@@ -48,6 +48,7 @@ internal sealed class SettingsStore
 
 internal sealed class DeskCanvasSettings
 {
+    public bool StartupEnabled { get; set; } = true;
     public bool AutoPause { get; set; } = true;
     public string? LastWallpaperFolder { get; set; }
     public Dictionary<string, string> WallpaperAssignments { get; set; } = new(StringComparer.OrdinalIgnoreCase);

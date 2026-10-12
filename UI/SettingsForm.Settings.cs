@@ -51,17 +51,20 @@ internal sealed partial class SettingsForm
         intervalRow.Resize += (_, _) => { intervalTitle.SetBounds(0, 0, U(205), U(38)); interval.SetBounds(U(205), U(4), U(130), U(32)); }; rows.Add(intervalRow);
         var autoPause = new PrototypeCheckBox { Text = "全屏应用运行时暂停壁纸", Checked = _manager.AutoPause, Font = Face(22), ForeColor = PrototypeTheme.Ink, BackColor = Color.White, AutoSize = false };
         autoPause.CheckedChanged += (_, _) => _manager.AutoPause = autoPause.Checked;
+        var startup = new PrototypeCheckBox { Text = "开机自动启动并恢复壁纸", Checked = _manager.StartupEnabled, Font = Face(22), ForeColor = PrototypeTheme.Ink, BackColor = Color.White, AutoSize = false };
+        startup.CheckedChanged += (_, _) => _manager.StartupEnabled = startup.Checked;
         var rotation = new ToggleSwitch { Text = "启用壁纸轮播", Checked = _manager.PlaylistEnabled, Font = Face(22) };
         rotation.CheckedChanged += (_, _) => _manager.PlaylistEnabled = rotation.Checked;
         var run = Button("运行设置", () => SetStatus("运行设置已保存"));
-        card.Height = U(178 + rows.Count * 40); card.Controls.Add(heading);
+        card.Height = U(226 + rows.Count * 40); card.Controls.Add(heading);
         foreach (Control row in rows) card.Controls.Add(row);
-        card.Controls.AddRange(new Control[] { autoPause, rotation, run });
+        card.Controls.AddRange(new Control[] { autoPause, startup, rotation, run });
         void Arrange()
         {
             int inset = U(30), width = card.Width - U(64), y = U(62); heading.SetBounds(inset, U(17), width, U(40));
             foreach (Control row in rows) { row.SetBounds(inset, y, width, U(40)); y += U(40); }
-            autoPause.SetBounds(inset, y + U(2), (int)(width * .59), U(42)); rotation.SetBounds(inset + (int)(width * .59), y + U(2), (int)(width * .41), U(42)); run.SetBounds(inset, y + U(54), width, U(48));
+            autoPause.SetBounds(inset, y + U(2), (int)(width * .59), U(42)); rotation.SetBounds(inset + (int)(width * .59), y + U(2), (int)(width * .41), U(42));
+            startup.SetBounds(inset, y + U(50), width, U(42)); run.SetBounds(inset, y + U(102), width, U(48));
         }
         card.Resize += (_, _) => Arrange(); Arrange(); return card;
     }
