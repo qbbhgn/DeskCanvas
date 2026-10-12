@@ -221,6 +221,14 @@ internal sealed class WallpaperManager : IDisposable
 
     public void ClearWallpaperFolder(Screen screen) => SetWallpaperFolder(screen.DeviceName, null);
 
+    /// <summary>Clears all display-specific overrides so the global wallpaper is used everywhere.</summary>
+    public void ClearWallpaperAssignments()
+    {
+        if (_settings.Current.WallpaperAssignments.Count == 0) return;
+        _settings.Current.WallpaperAssignments.Clear();
+        _settings.Save();
+    }
+
     private string? ResolveWallpaperFolder(Screen screen)
     {
         string? assigned = GetAssignedWallpaperFolder(screen);
@@ -455,12 +463,13 @@ internal sealed class WallpaperManager : IDisposable
     /// <summary>true 表示系统没有可挂接的桌面背景层，壁纸改以覆盖桌面的普通窗口运行（会遮住桌面图标）。</summary>
     public bool UsesCoverWindow { get; private set; }
 
-    public async Task ApplyTo(IEnumerable<Screen> screens)
+    public async Task ApplyTo(IEnumerable<Screen> screens, bool replaceAll = false)
     {
         var selectedScreens = screens.DistinctBy(item => item.DeviceName, StringComparer.OrdinalIgnoreCase).ToList();
         if (selectedScreens.Count == 0) return;
-        if (!selectedScreens.Any(screen => ResolveWallpaperFolder(screen) is not null)) return;
-        var pending = new Dictionary<string, WallpaperWindow>(StringComparer.OrdinalIgnoreCase);
+        var pending = replaceAll
+            ? new Dictionary<string, WallpaperWindow>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, WallpaperWindow>(_windows, StringComparer.OrdinalIgnoreCase);
         var failures = new List<string>();
         // 逐个显示器尽力应用：某个显示器失败（例如投影/虚拟显示器）不应影响其它显示器。
         foreach (Screen screen in selectedScreens)
@@ -480,16 +489,19 @@ internal sealed class WallpaperManager : IDisposable
                 continue;
             }
 
-            if (_windows.TryGetValue(screen.DeviceName, out WallpaperWindow? reusable) && reusable.IsMounted)
+            if (_windows.TryGetValue(screen.DeviceName, out WallpaperWindow? reusable) && reusable.IsMounted &&
+                string.Equals(reusable.WallpaperFolder, folder, StringComparison.OrdinalIgnoreCase))
             {
-                // 复用已挂接的窗口，只切换网页内容：不重建 WebView2，既不闪屏也不会重复初始化失败。
-                await reusable.StartAsync(folder, manifest, GetPropertyValues(manifest));
                 pending[screen.DeviceName] = reusable;
                 continue;
             }
             try
             {
-                pending[screen.DeviceName] = await CreateWindowAsync(screen, folder, manifest);
+                // 不复用不同壁纸的 WebView2 页面，避免旧脚本、定时器和 DOM 状态污染新壁纸。
+                WallpaperWindow replacement = await CreateWindowAsync(screen, folder, manifest);
+                pending[screen.DeviceName] = replacement;
+                if (_windows.TryGetValue(screen.DeviceName, out WallpaperWindow? previous) && !ReferenceEquals(previous, replacement))
+                    await previous.CloseAsync();
             }
             catch (Exception ex)
             {
@@ -502,10 +514,10 @@ internal sealed class WallpaperManager : IDisposable
             LastFailures = failures;
             throw new InvalidOperationException("所有显示器的壁纸都创建失败，请查看日志：" + StartupLog.GetPath());
         }
-        // 关闭本次不再使用的旧窗口（显示器被移除或取消勾选）。
+        // 全屏应用时关闭已移除显示器或不再使用的旧窗口；单屏应用保留其它显示器。
         foreach (var item in _windows)
         {
-            if (!pending.ContainsKey(item.Key)) await item.Value.CloseAsync();
+            if (replaceAll && !pending.ContainsKey(item.Key)) await item.Value.CloseAsync();
         }
         _windows.Clear();
         foreach (var item in pending) _windows[item.Key] = item.Value;
@@ -534,7 +546,7 @@ internal sealed class WallpaperManager : IDisposable
         await retry.StartAsync(folder, manifest, GetPropertyValues(manifest));
         return retry;
     }
-    public Task ApplyToAll() => ApplyTo(Screens);
+    public Task ApplyToAll() => ApplyTo(Screens, replaceAll: true);
     public void Pause(bool paused) { IsPaused = paused; foreach (var window in _windows.Values) window.SetPaused(paused); }
     /// <summary>覆盖模式下系统"显示桌面"可能把壁纸窗口最小化，这里做一次兜底恢复。</summary>
     public void EnsureVisible() { foreach (var window in _windows.Values) window.EnsureVisible(); }

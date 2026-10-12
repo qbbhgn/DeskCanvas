@@ -388,7 +388,8 @@ internal sealed class PrototypeComboBox : ComboBox
         var rectangle = e.Bounds;
         rectangle.X += (int)(8 * DeviceDpi / 96f);
         rectangle.Width = Math.Max(0, rectangle.Width - (int)(12 * DeviceDpi / 96f));
-        TextRenderer.DrawText(e.Graphics, text, Font, rectangle, (e.State & DrawItemState.Selected) != 0 ? SystemColors.HighlightText : ForeColor,
+        Color textColor = (e.State & DrawItemState.Selected) != 0 ? (BackColor.GetBrightness() < .5f ? Color.White : SystemColors.HighlightText) : ForeColor;
+        TextRenderer.DrawText(e.Graphics, text, Font, rectangle, textColor,
             TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
         if ((e.State & DrawItemState.Focus) != 0) e.DrawFocusRectangle();
     }

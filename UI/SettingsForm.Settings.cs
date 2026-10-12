@@ -23,7 +23,7 @@ internal sealed partial class SettingsForm
             try { manifest = WallpaperManifest.Load(folder); }
             catch (Exception ex) { StartupLog.Write("读取当前壁纸属性失败", ex); }
         }
-        var sections = new List<Control> { CreateRuntimeCard(manifest), CreateRunControlCard(), CreateEnabledWallpapersCard(), CreatePlaylistCard(), CreateMonitorAssignmentsCard() };
+        var sections = new List<Control> { CreateRuntimeCard(manifest), CreateRunControlCard(), CreateEnabledWallpapersCard(), CreatePlaylistCard() };
         foreach (Control section in sections) scroll.Controls.Add(section);
         void Arrange()
         {
@@ -143,33 +143,6 @@ internal sealed partial class SettingsForm
             int width = card.Width - U(68); heading.SetBounds(U(34), U(20), width, U(48)); hint.SetBounds(U(34), U(73), width, U(38)); list.SetBounds(U(34), U(122), width, U(listHeight));
             save.SetBounds(U(34), U(142 + listHeight), U(140), U(42)); rotate.SetBounds(U(190), U(142 + listHeight), U(140), U(42));
         }; return card;
-    }
-    private SurfacePanel CreateMonitorAssignmentsCard()
-    {
-        var library = _manager.Library.ToList(); var screens = _manager.Screens; var card = new SurfacePanel { Height = U(78 + Math.Max(1, screens.Count) * 105) };
-        var heading = TextLabel("显示器壁纸", 28, true); card.Controls.Add(heading); var rows = new List<Control>();
-        foreach (Screen screen in screens)
-        {
-            var row = new Panel { BackColor = Color.White }; var device = TextLabel(screen.DeviceName, 22);
-            var choices = new List<WallpaperChoice> { new(null, "使用全局壁纸") }; choices.AddRange(library.Select(item => new WallpaperChoice(item.Folder, item.Manifest.Title)));
-            var combo = new PrototypeComboBox { Font = Face(22) }; combo.Items.AddRange(choices.Cast<object>().ToArray());
-            string? assigned = _manager.GetAssignedWallpaperFolder(screen); int selected = assigned is null ? 0 : choices.FindIndex(item => string.Equals(item.Folder, assigned, StringComparison.OrdinalIgnoreCase)); combo.SelectedIndex = selected >= 0 ? selected : 0;
-            combo.SelectedIndexChanged += async (_, _) =>
-            {
-                if (combo.SelectedItem is not WallpaperChoice choice) return;
-                await RunActionAsync(async () => { _manager.SetWallpaperFolder(screen, choice.Folder); await _manager.ApplyToAll(); RefreshRuntimeState(); SetStatus($"已为 {screen.DeviceName} 应用 {choice.Title}"); WarnIfCoverModeHidesIcons(); });
-            };
-            var reset = Button("使用全局壁纸", color: Color.FromArgb(94, 124, 151)); reset.Click += async (_, _) =>
-            {
-                if (combo.SelectedIndex != 0) combo.SelectedIndex = 0;
-                else await RunActionAsync(async () => { _manager.ClearWallpaperFolder(screen); await _manager.ApplyToAll(); RefreshRuntimeState(); SetStatus($"{screen.DeviceName} 使用全局壁纸"); });
-            };
-            row.Controls.AddRange(new Control[] { device, combo, reset });
-            row.Resize += (_, _) => { device.SetBounds(0, 0, (int)(row.Width * .4), U(40)); combo.SetBounds((int)(row.Width * .42), U(2), (int)(row.Width * .54), U(42)); reset.SetBounds(0, U(54), U(200), U(42)); };
-            rows.Add(row); card.Controls.Add(row);
-        }
-        if (screens.Count == 0) { var empty = TextLabel("未检测到显示器", 22); rows.Add(empty); card.Controls.Add(empty); }
-        card.Resize += (_, _) => { heading.SetBounds(U(34), U(18), card.Width - U(68), U(45)); for (int i = 0; i < rows.Count; i++) rows[i].SetBounds(U(34), U(72 + i * 105), card.Width - U(68), U(100)); }; return card;
     }
     private async Task UpdatePropertyAsync(string? editorFolder, string key, object value)
     {

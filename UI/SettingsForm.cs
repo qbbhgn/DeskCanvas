@@ -266,9 +266,39 @@ internal sealed partial class SettingsForm : Form
         var preview = new PreviewPanel { Font = Face(18) }; LoadLibraryPreview(preview, folder, manifest); Add(preview, 230);
         Add(TextLabel(manifest.Title, 24, true, Color.White), 48);
         Add(TextLabel($"作者：{manifest.Author}", 15, color: Color.Silver), 36);
-        var apply = Button("应用到桌面"); apply.Font = Face(17); apply.FillColor = Color.FromArgb(65, 133, 183);
-        apply.Click += async (_, _) => await RunActionAsync(async () => { _manager.LoadSelection(folder); await _manager.ApplyToAll(); RefreshRuntimeState(); WarnIfCoverModeHidesIcons(); });
-        Add(apply, 48);
+        var target = new PrototypeComboBox { Font = Face(17, true), ForeColor = Color.White, BackColor = Color.FromArgb(57, 59, 63), FlatStyle = FlatStyle.Flat };
+        target.Items.Add(new WallpaperTarget(null, "所有显示器"));
+        foreach (Screen screen in _manager.Screens) target.Items.Add(new WallpaperTarget(screen, screen.DeviceName));
+        target.SelectedIndex = 0;
+        var apply = Button("应用壁纸"); apply.Font = Face(17, true); apply.FillColor = Color.FromArgb(51, 139, 193); apply.OutlineColor = Color.FromArgb(91, 177, 225);
+        apply.Click += async (_, _) => await RunActionAsync(async () =>
+        {
+            if (target.SelectedItem is not WallpaperTarget selected) return;
+            if (selected.Screen is null)
+            {
+                _manager.LoadSelection(folder);
+                _manager.ClearWallpaperAssignments();
+                await _manager.ApplyToAll();
+            }
+            else
+            {
+                _manager.SetWallpaperFolder(selected.Screen, folder);
+                await _manager.ApplyTo(new[] { selected.Screen });
+            }
+            RefreshRuntimeState();
+            SetStatus(selected.Screen is null ? "已应用到所有显示器" : $"已应用到 {selected.Screen.DeviceName}");
+            WarnIfCoverModeHidesIcons();
+        });
+        var targetLabel = TextLabel("应用到", 17, true, Color.FromArgb(205, 209, 214)); targetLabel.BackColor = LibrarySurface;
+        var applyRow = new Panel { BackColor = LibrarySurface };
+        applyRow.Controls.AddRange(new Control[] { targetLabel, target, apply });
+        applyRow.Resize += (_, _) =>
+        {
+            targetLabel.SetBounds(0, U(5), U(90), U(38));
+            target.SetBounds(U(92), U(2), Math.Max(U(120), applyRow.Width - U(215)), U(42));
+            apply.SetBounds(applyRow.Width - U(110), 0, U(110), U(45));
+        };
+        Add(applyRow, 58);
         Add(TextLabel("壁纸详情", 18, true, Color.White), 42);
         Add(TextLabel($"类型：{manifest.Type}    分类：{string.Join(" / ", manifest.GetCategories(folder))}", 15, color: Color.Silver), 38);
         Add(TextLabel($"帧率：{manifest.RecommendedFps} FPS    版本：{manifest.Version}", 15, color: Color.Silver), 38);
@@ -355,6 +385,7 @@ internal sealed partial class SettingsForm : Form
     });
     private void SetStatus(string message) { if (_status is { IsDisposed: false }) _status.Text = message; }
     private sealed record WallpaperChoice(string? Folder, string Title) { public override string ToString() => Title; }
+    private sealed record WallpaperTarget(Screen? Screen, string Title) { public override string ToString() => Title; }
     private void ImportWallpaper()
     {
         using var dialog = new FolderBrowserDialog { Description = "选择包含 manifest.json 的壁纸文件夹" };
