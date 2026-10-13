@@ -6,7 +6,7 @@ namespace DeskCanvas.Services;
 
 internal sealed class DesktopEnvironmentService : IDisposable
 {
-    private readonly System.Windows.Forms.Timer _timer = new() { Interval = 80 };
+    private readonly System.Windows.Forms.Timer _timer = new() { Interval = 16 };
     private readonly DesktopToolWindow _tool = new();
     private Rectangle[] _icons = [];
     private DateTime _nextRefresh;
@@ -37,7 +37,7 @@ internal sealed class DesktopEnvironmentService : IDisposable
         bool desktop = active is not null && IsDesktop(point);
         bool ctrl = desktop && NativeMethods.GetAsyncKeyState(0x11) < 0;
         bool alt = desktop && NativeMethods.GetAsyncKeyState(0x12) < 0;
-        _tool.UpdateTool(point, ctrl ? "sweep" : alt ? "swat" : "");
+        _tool.UpdateTool(point, active?.DesktopToolsEnabled == true ? ctrl ? "sweep" : alt ? "swat" : "" : "");
         foreach (WallpaperWindow window in WallpaperWindow.Instances.ToArray())
         {
             if (!window.DesktopEnvironmentEnabled) continue;
@@ -48,6 +48,10 @@ internal sealed class DesktopEnvironmentService : IDisposable
                 CtrlKey = desktop && active == window && ctrl,
                 XRatio = (double)(point.X - bounds.X) / bounds.Width,
                 YRatio = (double)(point.Y - bounds.Y) / bounds.Height,
+                Alt = desktop && active == window && alt,
+                Ctrl = desktop && active == window && ctrl,
+                X = (double)(point.X - bounds.X) / bounds.Width,
+                Y = (double)(point.Y - bounds.Y) / bounds.Height,
                 Icons = _icons.Where(icon => bounds.IntersectsWith(icon)).Select(icon => new
                 {
                     X = (double)(icon.X - bounds.X) / bounds.Width,

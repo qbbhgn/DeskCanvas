@@ -306,10 +306,18 @@ internal sealed class WallpaperManager : IDisposable
         }
     }
 
-    public void ImportFolder(string folder)
+    public void ImportFolder(string folder, WallpaperManifest? manifest = null)
     {
         string source = Path.GetFullPath(folder);
-        _ = WallpaperManifest.Load(source);
+        bool hasManifest = File.Exists(Path.Combine(source, "manifest.json"));
+        if (hasManifest)
+        {
+            _ = WallpaperManifest.Load(source);
+        }
+        else if (manifest is null)
+        {
+            throw new FileNotFoundException("目录中缺少 manifest.json", Path.Combine(source, "manifest.json"));
+        }
         string libraryRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "DeskCanvas", "Imported");
         Directory.CreateDirectory(libraryRoot);
         string name = Path.GetFileName(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
@@ -321,6 +329,10 @@ internal sealed class WallpaperManager : IDisposable
         }
         if (Directory.Exists(target)) target = Path.Combine(libraryRoot, $"{name}-{Guid.NewGuid():N}");
         CopyDirectory(source, target);
+        if (!hasManifest)
+        {
+            File.WriteAllText(Path.Combine(target, "manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        }
         LoadSelection(target);
     }
 

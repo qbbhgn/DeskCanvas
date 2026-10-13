@@ -24,6 +24,7 @@ internal sealed class MouseForwarder : IDisposable
             if (message == NativeMethods.WmLButtonUp && _toolPress)
             {
                 _toolPress = false;
+                WallpaperManager.ForwardMouse(data.Pt.X, data.Pt.Y, message, data.MouseData);
                 return new IntPtr(1);
             }
             if (tool && message == NativeMethods.WmLButtonDown)

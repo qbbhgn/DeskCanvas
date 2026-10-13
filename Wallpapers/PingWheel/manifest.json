@@ -1,0 +1,15 @@
+{
+  "id": "builtin-ping-wheel",
+  "title": "Ping Wheel",
+  "description": "Hold Alt or Ctrl, move to select a translucent desktop signal wheel, and release to send.",
+  "author": "DeskCanvas",
+  "version": "1.0.0",
+  "type": "web",
+  "category": "Interactive",
+  "tags": ["interactive", "signals", "wheel"],
+  "entry": "index.html",
+  "interactive": true,
+  "desktopEnvironment": true,
+  "transparent": true,
+  "recommendedFps": 60
+}

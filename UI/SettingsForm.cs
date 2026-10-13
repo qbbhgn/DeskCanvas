@@ -334,7 +334,7 @@ internal sealed partial class SettingsForm : Form
         ResetPage("创建 / 导入", "创建 / 导入", "支持网页壁纸包，以及图片和视频文件。导入的媒体会自动生成壁纸包。");
         var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = PrototypeTheme.Canvas, Margin = Padding.Empty, Padding = new Padding(0, U(10), 0, 0) };
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        body.Controls.Add(ImportCard("网页壁纸包", "选择包含 manifest.json 的文件夹，支持 HTML、CSS、JavaScript 和本地资源。", "选择壁纸文件夹", ImportWallpaper, false), 0, 0);
+        body.Controls.Add(ImportCard("网页壁纸包", "选择壁纸文件夹；有 manifest.json 会直接使用，没有时可在导入前补充配置。", "选择壁纸文件夹", ImportWallpaper, false), 0, 0);
         body.Controls.Add(ImportCard("图片 / 视频", "导入 JPG、PNG、WebP、MP4、WebM 等常见媒体，自动生成可用壁纸。", "导入图片 / 视频", ImportMediaFile, true), 1, 0); _pageBody.Controls.Add(body);
     }
     private Control ImportCard(string titleText, string description, string buttonText, Action action, bool media)
@@ -395,8 +395,17 @@ internal sealed partial class SettingsForm : Form
     private sealed record WallpaperTarget(Screen? Screen, string Title) { public override string ToString() => Title; }
     private void ImportWallpaper()
     {
-        using var dialog = new FolderBrowserDialog { Description = "选择包含 manifest.json 的壁纸文件夹" };
-        if (dialog.ShowDialog(this) == DialogResult.OK) RunAction(() => { _manager.ImportFolder(dialog.SelectedPath); ShowLibrary(); });
+        using var dialog = new FolderBrowserDialog { Description = "选择壁纸文件夹（可以没有 manifest.json）" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        string folder = dialog.SelectedPath;
+        if (File.Exists(Path.Combine(folder, "manifest.json")))
+        {
+            RunAction(() => { _manager.ImportFolder(folder); ShowLibrary(); });
+            return;
+        }
+        using var manifestDialog = new ImportManifestDialog(folder, _constructionDpi);
+        if (manifestDialog.ShowDialog(this) == DialogResult.OK)
+            RunAction(() => { _manager.ImportFolder(folder, manifestDialog.Manifest); ShowLibrary(); });
     }
     private void ImportMediaFile()
     {

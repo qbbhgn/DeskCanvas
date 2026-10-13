@@ -28,6 +28,9 @@ internal sealed class WallpaperWindow : Form
     private bool _paused;
     private bool _mounted;
     private bool _closing;
+    private readonly object _desktopEnvironmentGate = new();
+    private string? _pendingDesktopEnvironment;
+    private bool _dispatchingDesktopEnvironment;
     public static List<WallpaperWindow> Instances { get; } = new();
     public Rectangle ScreenBounds { get; }
     public string ScreenDeviceName { get; }
@@ -40,6 +43,7 @@ internal sealed class WallpaperWindow : Form
     public bool UsesCoverWindow => _coverMode;
     public bool AudioReactiveEnabled => _manifest?.AudioReactive == true;
     public bool DesktopEnvironmentEnabled => IsMounted && !_paused && _manifest?.DesktopEnvironment == true;
+    public bool DesktopToolsEnabled => IsMounted && !_paused && _manifest?.DesktopTools == true;
     public bool SupportsProperty(string key) =>
         !string.IsNullOrWhiteSpace(key) && _manifest?.Properties.ContainsKey(key) == true;
 
@@ -434,7 +438,8 @@ internal sealed class WallpaperWindow : Form
     {
         string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeskCanvas", "WebView2");
         Directory.CreateDirectory(userDataFolder);
-        return CoreWebView2Environment.CreateAsync(null, userDataFolder);
+        var options = new CoreWebView2EnvironmentOptions("--autoplay-policy=no-user-gesture-required");
+        return CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
     }
 
     private static async Task<CoreWebView2Environment> GetWebViewEnvironmentAsync()
@@ -521,7 +526,32 @@ internal sealed class WallpaperWindow : Form
     {
         if (!DesktopEnvironmentEnabled) return;
         string json = JsonSerializer.Serialize(detail, RuntimeJson);
-        _ = ExecuteRuntimeScriptAsync($"window.dispatchEvent(new CustomEvent('deskcanvas:desktop',{{detail:{json}}}));");
+        lock (_desktopEnvironmentGate)
+        {
+            _pendingDesktopEnvironment = json;
+            if (_dispatchingDesktopEnvironment) return;
+            _dispatchingDesktopEnvironment = true;
+        }
+        _ = DispatchDesktopEnvironmentAsync();
+    }
+
+    private async Task DispatchDesktopEnvironmentAsync()
+    {
+        while (true)
+        {
+            string? json;
+            lock (_desktopEnvironmentGate)
+            {
+                json = _pendingDesktopEnvironment;
+                _pendingDesktopEnvironment = null;
+                if (json is null)
+                {
+                    _dispatchingDesktopEnvironment = false;
+                    return;
+                }
+            }
+            await ExecuteRuntimeScriptAsync($"window.dispatchEvent(new CustomEvent('deskcanvas:desktop',{{detail:{json}}}));");
+        }
     }
 
     protected override void Dispose(bool disposing)

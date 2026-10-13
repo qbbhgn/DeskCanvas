@@ -11,6 +11,7 @@
   "preview": "preview.png",
   "interactive": true,
   "desktopEnvironment": true,
+  "desktopTools": true,
   "transparent": true,
   "recommendedFps": 30,
   "properties": {

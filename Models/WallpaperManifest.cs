@@ -17,6 +17,7 @@ public sealed class WallpaperManifest
     public string? Preview { get; set; }
     public bool Interactive { get; set; } = true;
     public bool DesktopEnvironment { get; set; }
+    public bool DesktopTools { get; set; }
     public bool Transparent { get; set; }
     public bool AudioReactive { get; set; }
     public int RecommendedFps { get; set; } = 60;

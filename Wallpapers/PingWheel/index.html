@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DeskCanvas Ping Wheel</title>
+    <style>
+      :root {
+        --gold: #e8c875;
+        --cyan: #6be5ff;
+        --red: #ff647a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        color: #f6f1df;
+        font-family: 'Segoe UI', sans-serif;
+      }
+      #fx {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #wheel {
+        position: fixed;
+        width: 280px;
+        height: 280px;
+        overflow: visible;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        opacity: 0;
+        transition: opacity 0.08s linear;
+      }
+      #wheel.open {
+        opacity: 1;
+      }
+      .ring {
+        fill: none;
+        stroke: rgba(12, 19, 23, 0.55);
+        stroke-width: 93;
+      }
+      .outerGlow {
+        fill: none;
+        stroke: rgba(214, 224, 225, 0.13);
+        stroke-width: 1;
+      }
+      .innerRing {
+        fill: none;
+        stroke: rgba(214, 224, 225, 0.34);
+        stroke-width: 1;
+      }
+      .slice {
+        fill: rgba(34, 43, 47, 0.48);
+        stroke: rgba(170, 183, 183, 0.45);
+        stroke-width: 0.8;
+        transition:
+          fill 0.08s ease,
+          stroke 0.08s ease;
+      }
+      .slice.hot {
+        fill: rgba(192, 210, 209, 0.24);
+        stroke: rgba(234, 242, 238, 0.9);
+      }
+      #wheel.alt .slice.hot {
+        fill: rgba(192, 210, 209, 0.24);
+        stroke: rgba(234, 242, 238, 0.9);
+      }
+      .icon {
+        width: 48px;
+        height: 48px;
+        transform: translate(-24px, -24px);
+        pointer-events: none;
+        opacity: 1;
+      }
+      .label {
+        fill: rgba(245, 239, 221, 0.9);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+      }
+      .center {
+        fill: rgba(4, 12, 19, 0.2);
+        stroke: rgba(225, 231, 224, 0.52);
+        stroke-width: 1.2;
+      }
+      .center.alt {
+        stroke: var(--cyan);
+      }
+      .centerText {
+        fill: rgba(246, 241, 223, 0.88);
+        font-size: 10px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        letter-spacing: 1.5px;
+      }
+      .burst {
+        position: fixed;
+        width: 76px;
+        height: 76px;
+        margin: -38px;
+        background: center / contain no-repeat;
+        pointer-events: none;
+        animation: ping 1.6s ease-out forwards;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+      }
+      .burst.alt {
+        filter: drop-shadow(0 0 14px rgba(107, 229, 255, 0.7));
+      }
+      .signal-ring {
+        position: fixed;
+        width: 36px;
+        height: 36px;
+        margin: -18px;
+        border: 2px solid var(--signal-color);
+        border-radius: 50%;
+        pointer-events: none;
+        animation: ring 0.45s ease-out forwards;
+      }
+      .signal-ring.alt {
+        border-color: rgba(107, 229, 255, 0.92);
+      }
+      .hint {
+        position: fixed;
+        left: 28px;
+        bottom: 25px;
+        padding: 7px 10px;
+        color: rgba(242, 232, 198, 0.68);
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        pointer-events: none;
+        opacity: 0.72;
+      }
+      @keyframes ping {
+        0% {
+          opacity: 0;
+          transform: scale(0.6);
+        }
+        16% {
+          opacity: 1;
+          transform: scale(1.08);
+        }
+        30%,
+        72% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+      }
+      @keyframes ring {
+        0% {
+          width: 36px;
+          height: 36px;
+          margin: -18px;
+          opacity: 0.95;
+        }
+        100% {
+          width: 104px;
+          height: 104px;
+          margin: -52px;
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="fx"></canvas>
+    <svg id="wheel" viewBox="-180 -180 360 360" aria-hidden="true"></svg>
+    <script>
+      const wheel = document.getElementById('wheel'),
+        canvas = document.getElementById('fx'),
+        ctx = canvas.getContext('2d')
+      const items = [
+        ['danger', '危险', 'caution', 'pingwheel_cautionrender', '#ed6660'],
+        ['push', '推进', 'push', 'pingwheel_pushrender', '#65bde0'],
+        ['on-my-way', '前往', 'omw', 'pingwheel_omw_cb', '#62d4c1'],
+        ['all-in', '集火', 'all_in', 'pingwheel_allin_render_01', '#e8aa66'],
+        ['assist', '协助', 'assist_me', 'assist_me', '#78c6e5'],
+        [
+          'vision',
+          '视野',
+          'vision_cleared',
+          'pingwheel_visionclearedrender',
+          '#91d7cb',
+        ],
+        ['missing', '失踪', 'enemy_missing', 'enemy_missing', '#efca70'],
+        [
+          'enemy-vision',
+          '敌方视野',
+          'enemy_vision',
+          'pingwheel_enemyvisionrender',
+          '#ee7c91',
+        ],
+      ]
+      let dpr = 1,
+        w = 0,
+        h = 0,
+        gesture = null,
+        hot = -1,
+        raf = 0
+      const sparks = []
+      function resize() {
+        dpr = Math.min(devicePixelRatio || 1, 2)
+        w = innerWidth
+        h = innerHeight
+        canvas.width = w * dpr
+        canvas.height = h * dpr
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      function point(x, y, r, degrees) {
+        const a = ((degrees - 90) * Math.PI) / 180
+        return [x + Math.cos(a) * r, y + Math.sin(a) * r]
+      }
+      function sector(index, inner, outer) {
+        const start = index * 45 - 22.5,
+          end = index * 45 + 22.5
+        const [x0, y0] = point(0, 0, inner, start),
+          [x1, y1] = point(0, 0, outer, start),
+          [x2, y2] = point(0, 0, outer, end),
+          [x3, y3] = point(0, 0, inner, end)
+        return `M${x0} ${y0}L${x1} ${y1}A${outer} ${outer} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${inner} ${inner} 0 0 0 ${x0} ${y0}Z`
+      }
+      function buildWheel() {
+        wheel.innerHTML =
+          '<circle class="outerGlow" r="146"></circle><circle class="ring" r="98.5"></circle><circle class="center" r="47"></circle>'
+        items.forEach((item, index) => {
+          const path = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path'
+          )
+          path.classList.add('slice')
+          path.dataset.index = index
+          path.setAttribute('d', sector(index, 52, 145))
+          wheel.append(path)
+          const [x, y] = point(0, 0, 105, index * 45)
+          const icon = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'image'
+          )
+          icon.classList.add('icon')
+          icon.setAttribute('x', x)
+          icon.setAttribute('y', y)
+          icon.setAttribute('href', `./assets/textures/${item[2]}.png`)
+          wheel.append(icon)
+        })
+        const centerText = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'text'
+        )
+        centerText.classList.add('centerText')
+        centerText.textContent = ''
+        wheel.append(centerText)
+      }
+      function slice(x, y) {
+        const dx = x - gesture.x,
+          dy = y - gesture.y,
+          distance = Math.hypot(dx, dy)
+        if (distance < 40) return -1
+        return (
+          (Math.round(
+            (((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45
+          ) +
+            8) %
+          8
+        )
+      }
+      function setHot(index) {
+        if (hot === index) return
+        hot = index
+        wheel
+          .querySelectorAll('.slice')
+          .forEach((node, i) => node.classList.toggle('hot', i === index))
+        wheel.querySelector('.centerText').textContent =
+          index < 0 ? '' : items[index][1]
+      }
+      const sounds = items.map((item) => {
+        const sound = new Audio(`./assets/sounds/${item[0]}.wav`)
+        sound.preload = 'auto'
+        sound.volume = 0.55
+        return sound
+      })
+      let audioContext = null
+      let audioReady = null
+      const audioBuffers = []
+      function prepareAudio() {
+        if (audioReady) return audioReady
+        audioContext = new AudioContext()
+        audioReady = Promise.all(
+          items.map(async (item, index) => {
+            const response = await fetch(`./assets/sounds/${item[0]}.wav`)
+            if (!response.ok) throw new Error(`Sound unavailable: ${item[0]}`)
+            audioBuffers[index] = await audioContext.decodeAudioData(
+              await response.arrayBuffer()
+            )
+          })
+        )
+        return audioReady
+      }
+      async function playTone(index) {
+        try {
+          await prepareAudio()
+          await audioContext.resume()
+          const source = audioContext.createBufferSource()
+          const gain = audioContext.createGain()
+          source.buffer = audioBuffers[index]
+          gain.gain.value = 0.55
+          source.connect(gain).connect(audioContext.destination)
+          source.start()
+        } catch (error) {
+          const sound = sounds[index].cloneNode()
+          sound.volume = 0.55
+          sound
+            .play()
+            .catch(() => console.warn('Signal audio could not play', error))
+        }
+      }
+      function spawn(x, y, index, alt) {
+        if (index < 0) return
+        const burst = document.createElement('div')
+        burst.className = 'burst'
+        burst.style.backgroundImage = `url('./assets/textures/${items[index][3]}.png')`
+        burst.style.left = `${x}px`
+        burst.style.top = `${y}px`
+        document.body.append(burst)
+        const ring = document.createElement('div')
+        ring.className = 'signal-ring'
+        ring.style.setProperty('--signal-color', items[index][4])
+        ring.style.left = `${x}px`
+        ring.style.top = `${y}px`
+        document.body.append(ring)
+        setTimeout(() => {
+          burst.remove()
+          ring.remove()
+        }, 1650)
+        for (let i = 0; i < 8; i++)
+          sparks.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            life: 1,
+            color: items[index][4],
+          })
+        playTone(index)
+      }
+      function draw() {
+        ctx.clearRect(0, 0, w, h)
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const p = sparks[i]
+          p.x += p.vx
+          p.y += p.vy
+          p.vx *= 0.97
+          p.vy *= 0.97
+          p.life -= 0.025
+          if (p.life <= 0) {
+            sparks.splice(i, 1)
+            continue
+          }
+          ctx.globalAlpha = p.life
+          ctx.fillStyle = p.color
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, 2.2 * p.life, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+        raf = requestAnimationFrame(draw)
+      }
+      function updateGesture(state) {
+        const alt = Boolean(state.altKey),
+          ctrl = Boolean(state.ctrlKey)
+        const active = alt !== ctrl
+        const x = Number(state.x),
+          y = Number(state.y)
+        if (active && !gesture) {
+          prepareAudio().catch(() => {})
+          const cx = Math.max(140, Math.min(innerWidth - 140, x))
+          const cy = Math.max(140, Math.min(innerHeight - 140, y))
+          gesture = { alt, x: cx, y: cy }
+          wheel.classList.add('open')
+          wheel.classList.toggle('alt', alt)
+          wheel.style.left = `${cx}px`
+          wheel.style.top = `${cy}px`
+          wheel.querySelector('.center').classList.toggle('alt', !alt)
+          setHot(-1)
+        } else if (active && gesture) {
+          if (gesture.alt !== alt) return
+          setHot(slice(x, y))
+        } else if (!active && gesture) {
+          spawn(gesture.x, gesture.y, hot, gesture.alt)
+          wheel.classList.remove('open')
+          gesture = null
+          setHot(-1)
+        }
+      }
+      addEventListener('deskcanvas:desktop', (event) => {
+        const state = event.detail
+        updateGesture({
+          altKey: state.altKey,
+          ctrlKey: state.ctrlKey,
+          x: state.xRatio * innerWidth,
+          y: state.yRatio * innerHeight,
+        })
+      })
+      addEventListener('deskcanvas:pause', () => {
+        cancelAnimationFrame(raf)
+        raf = 0
+        audioContext?.suspend()
+      })
+      addEventListener('deskcanvas:resume', () => {
+        if (!raf) draw()
+      })
+      addEventListener('resize', resize)
+      if (!window.chrome?.webview) {
+        let pointer = { x: innerWidth / 2, y: innerHeight / 2 }
+        addEventListener('pointermove', (event) => {
+          pointer = { x: event.clientX, y: event.clientY }
+          updateGesture({
+            ...pointer,
+            altKey: event.altKey,
+            ctrlKey: event.ctrlKey,
+          })
+        })
+        for (const eventName of ['keydown', 'keyup']) {
+          addEventListener(eventName, (event) => {
+            if (event.key !== 'Alt' && event.key !== 'Control') return
+            event.preventDefault()
+            updateGesture({
+              ...pointer,
+              altKey: event.altKey,
+              ctrlKey: event.ctrlKey,
+            })
+          })
+        }
+        addEventListener('blur', () => {
+          wheel.classList.remove('open')
+          gesture = null
+          setHot(-1)
+        })
+      }
+      resize()
+      buildWheel()
+      draw()
+    </script>
+  </body>
+</html>
