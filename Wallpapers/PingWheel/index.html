@@ -344,15 +344,6 @@
           burst.remove()
           ring.remove()
         }, 1650)
-        for (let i = 0; i < 8; i++)
-          sparks.push({
-            x,
-            y,
-            vx: (Math.random() - 0.5) * 5,
-            vy: (Math.random() - 0.5) * 5,
-            life: 1,
-            color: items[index][4],
-          })
         playTone(index)
       }
       function draw() {
