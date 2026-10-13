@@ -30,47 +30,48 @@
       }
       #wheel {
         position: fixed;
-        width: 280px;
-        height: 280px;
+        width: 360px;
+        height: 360px;
         overflow: visible;
         pointer-events: none;
         transform: translate(-50%, -50%);
         opacity: 0;
         transition: opacity 0.08s linear;
+        filter: drop-shadow(0 12px 24px rgba(0, 8, 18, 0.34));
       }
       #wheel.open {
         opacity: 1;
       }
       .ring {
         fill: none;
-        stroke: rgba(12, 19, 23, 0.55);
+        stroke: rgba(8, 19, 30, 0.64);
         stroke-width: 93;
       }
       .outerGlow {
         fill: none;
-        stroke: rgba(214, 224, 225, 0.13);
-        stroke-width: 1;
+        stroke: rgba(201, 224, 232, 0.34);
+        stroke-width: 1.5;
       }
       .innerRing {
         fill: none;
-        stroke: rgba(214, 224, 225, 0.34);
-        stroke-width: 1;
+        stroke: rgba(116, 207, 234, 0.68);
+        stroke-width: 2;
       }
       .slice {
-        fill: rgba(34, 43, 47, 0.48);
-        stroke: rgba(170, 183, 183, 0.45);
-        stroke-width: 0.8;
+        fill: rgba(10, 24, 37, 0.72);
+        stroke: rgba(193, 218, 225, 0.38);
+        stroke-width: 0.9;
         transition:
           fill 0.08s ease,
           stroke 0.08s ease;
       }
       .slice.hot {
-        fill: rgba(192, 210, 209, 0.24);
-        stroke: rgba(234, 242, 238, 0.9);
+        fill: rgba(77, 166, 194, 0.28);
+        stroke: rgba(173, 238, 250, 0.96);
       }
       #wheel.alt .slice.hot {
-        fill: rgba(192, 210, 209, 0.24);
-        stroke: rgba(234, 242, 238, 0.9);
+        fill: rgba(77, 166, 194, 0.28);
+        stroke: rgba(173, 238, 250, 0.96);
       }
       .icon {
         width: 48px;
@@ -89,19 +90,23 @@
         pointer-events: none;
       }
       .center {
-        fill: rgba(4, 12, 19, 0.2);
-        stroke: rgba(225, 231, 224, 0.52);
-        stroke-width: 1.2;
+        fill: rgba(36, 104, 132, 0.16);
+        stroke: rgba(117, 214, 241, 0.76);
+        stroke-width: 2;
+        filter: drop-shadow(0 0 5px rgba(83, 192, 226, 0.42));
       }
       .center.alt {
-        stroke: var(--cyan);
+        stroke: rgba(151, 235, 255, 0.94);
       }
       .centerText {
-        fill: rgba(246, 241, 223, 0.88);
+        fill: rgba(236, 250, 255, 0.92);
         font-size: 10px;
         text-anchor: middle;
         dominant-baseline: middle;
-        letter-spacing: 1.5px;
+        letter-spacing: 0.5px;
+        paint-order: stroke;
+        stroke: rgba(8, 23, 35, 0.8);
+        stroke-width: 2px;
       }
       .burst {
         position: fixed;
@@ -183,25 +188,27 @@
         canvas = document.getElementById('fx'),
         ctx = canvas.getContext('2d')
       const items = [
-        ['danger', '危险', 'caution', 'pingwheel_cautionrender', '#ed6660'],
-        ['push', '推进', 'push', 'pingwheel_pushrender', '#65bde0'],
-        ['on-my-way', '前往', 'omw', 'pingwheel_omw_cb', '#62d4c1'],
-        ['all-in', '集火', 'all_in', 'pingwheel_allin_render_01', '#e8aa66'],
-        ['assist', '协助', 'assist_me', 'assist_me', '#78c6e5'],
+        ['danger', '危险', 'caution', 'pingwheel_cautionrender', '#ed6660', 'Danger.wav'],
+        ['push', '推进', 'push', 'pingwheel_pushrender', '#65bde0', 'Attack.wav'],
+        ['on-my-way', '前往', 'omw', 'pingwheel_omw_cb', '#62d4c1', 'OnMyWay.wav'],
+        ['all-in', '集火', 'all_in', 'pingwheel_allin_render_01', '#e8aa66', 'SRP_9.wav'],
+        ['assist', '协助', 'assist_me', 'assist_me', '#78c6e5', 'ComeHere.wav'],
         [
           'vision',
           '视野',
           'vision_cleared',
           'pingwheel_visionclearedrender',
           '#91d7cb',
+          'AreaIsWarded.wav',
         ],
-        ['missing', '失踪', 'enemy_missing', 'enemy_missing', '#efca70'],
+        ['missing', '失踪', 'enemy_missing', 'enemy_missing', '#efca70', 'MIA.wav'],
         [
           'enemy-vision',
           '敌方视野',
           'enemy_vision',
           'pingwheel_enemyvisionrender',
           '#ee7c91',
+          'SRP_11.wav',
         ],
       ]
       let dpr = 1,
@@ -234,7 +241,7 @@
       }
       function buildWheel() {
         wheel.innerHTML =
-          '<circle class="outerGlow" r="146"></circle><circle class="ring" r="98.5"></circle><circle class="center" r="47"></circle>'
+          '<circle class="outerGlow" r="146"></circle><circle class="ring" r="98.5"></circle><circle class="innerRing" r="52"></circle><circle class="center" r="47"></circle>'
         items.forEach((item, index) => {
           const path = document.createElementNS(
             'http://www.w3.org/2000/svg',
@@ -286,7 +293,7 @@
           index < 0 ? '' : items[index][1]
       }
       const sounds = items.map((item) => {
-        const sound = new Audio(`./assets/sounds/${item[0]}.wav`)
+        const sound = new Audio(`./assets/sounds/${item[5]}`)
         sound.preload = 'auto'
         sound.volume = 0.55
         return sound
@@ -299,11 +306,15 @@
         audioContext = new AudioContext()
         audioReady = Promise.all(
           items.map(async (item, index) => {
-            const response = await fetch(`./assets/sounds/${item[0]}.wav`)
-            if (!response.ok) throw new Error(`Sound unavailable: ${item[0]}`)
-            audioBuffers[index] = await audioContext.decodeAudioData(
-              await response.arrayBuffer()
-            )
+            try {
+              const response = await fetch(`./assets/sounds/${item[5]}`)
+              if (!response.ok) throw new Error(`Sound unavailable: ${item[5]}`)
+              audioBuffers[index] = await audioContext.decodeAudioData(
+                await response.arrayBuffer()
+              )
+            } catch (error) {
+              console.warn(`Signal audio could not load: ${item[5]}`, error)
+            }
           })
         )
         return audioReady
@@ -314,6 +325,7 @@
           await audioContext.resume()
           const source = audioContext.createBufferSource()
           const gain = audioContext.createGain()
+          if (!audioBuffers[index]) throw new Error(`Sound unavailable: ${items[index][5]}`)
           source.buffer = audioBuffers[index]
           gain.gain.value = 0.55
           source.connect(gain).connect(audioContext.destination)
@@ -328,12 +340,19 @@
       }
       function spawn(x, y, index, alt) {
         if (index < 0) return
-        const burst = document.createElement('div')
-        burst.className = 'burst'
-        burst.style.backgroundImage = `url('./assets/textures/${items[index][3]}.png')`
-        burst.style.left = `${x}px`
-        burst.style.top = `${y}px`
-        document.body.append(burst)
+        const textures =
+          items[index][0] === 'all-in'
+            ? ['pingwheel_allin_render_01', 'pingwheel_allin_render_02']
+            : [items[index][3]]
+        const bursts = textures.map((texture) => {
+          const burst = document.createElement('div')
+          burst.className = 'burst'
+          burst.style.backgroundImage = `url('./assets/textures/${texture}.png')`
+          burst.style.left = `${x}px`
+          burst.style.top = `${y}px`
+          document.body.append(burst)
+          return burst
+        })
         const ring = document.createElement('div')
         ring.className = 'signal-ring'
         ring.style.setProperty('--signal-color', items[index][4])
@@ -341,7 +360,7 @@
         ring.style.top = `${y}px`
         document.body.append(ring)
         setTimeout(() => {
-          burst.remove()
+          bursts.forEach((burst) => burst.remove())
           ring.remove()
         }, 1650)
         playTone(index)
