@@ -2,6 +2,10 @@
 
 DeskCanvas 是一个 Windows 交互式桌面壁纸工作台，支持网页、图片和视频壁纸。程序常驻通知区域，左键单击托盘图标即可打开壁纸库和管理工作台。
 
+## 最新下载地址
+
+[点击下载最新版本](https://github.com/qbbhgn/DeskCanvas/releases/latest/download/DeskCanvas.zip)
+
 ## 当前功能
 
 - **壁纸库管理**：浏览、搜索和按分类筛选壁纸，查看壁纸信息，删除导入的壁纸。
